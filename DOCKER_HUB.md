@@ -1,12 +1,12 @@
 # Publishing to Docker Hub
 
-This guide explains how to publish the hulud-scan Docker image to Docker Hub under the `kitchencoder` account.
+This guide explains how to publish the package-scan Docker image to Docker Hub under the `kitchencoder` account.
 
 ## Prerequisites
 
 - Docker installed and running
 - Docker Hub account (username: `kitchencoder`)
-- Image built locally (`docker build -t hulud-scan .`)
+- Image built locally (`docker build -t package-scan .`)
 
 ## Step 1: Log in to Docker Hub
 
@@ -24,31 +24,31 @@ Tag the image with your Docker Hub username and desired repository name:
 
 ```bash
 # Tag with 'latest'
-docker tag hulud-scan kitchencoder/hulud-scan:latest
+docker tag package-scan kitchencoder/package-scan:latest
 
 # Also tag with a version number (recommended)
-docker tag hulud-scan kitchencoder/hulud-scan:0.1.0
+docker tag package-scan kitchencoder/package-scan:0.1.0
 
 # Optional: tag with additional labels
-docker tag hulud-scan kitchencoder/hulud-scan:0.1.0-lockfile-support
+docker tag package-scan kitchencoder/package-scan:0.1.0-lockfile-support
 ```
 
 ## Step 3: Push to Docker Hub
 
 ```bash
 # Push the latest tag
-docker push kitchencoder/hulud-scan:latest
+docker push kitchencoder/package-scan:latest
 
 # Push the versioned tag
-docker push kitchencoder/hulud-scan:0.1.0
+docker push kitchencoder/package-scan:0.1.0
 
 # Or push all tags at once
-docker push kitchencoder/hulud-scan --all-tags
+docker push kitchencoder/package-scan --all-tags
 ```
 
 ## Step 4: Verify
 
-Visit `https://hub.docker.com/r/kitchencoder/hulud-scan` to see your published image.
+Visit `https://hub.docker.com/r/kitchencoder/package-scan` to see your published image.
 
 ## How Others Can Use It
 
@@ -56,28 +56,28 @@ Once pushed, anyone can pull and run your scanner:
 
 ```bash
 # Pull and run in one command - super simple!
-docker run --rm -v "$(pwd):/workspace" kitchencoder/hulud-scan:latest
+docker run --rm -v "$(pwd):/workspace" kitchencoder/package-scan:latest
 
-# That's it! Report saved as ./hulud_scan_report.json
+# That's it! Report saved as ./package_scan_report.json
 ```
 
 **Advanced usage:**
 
 ```bash
 # Custom output filename
-docker run --rm -v "$(pwd):/workspace" kitchencoder/hulud-scan:latest --output my-report.json
+docker run --rm -v "$(pwd):/workspace" kitchencoder/package-scan:latest --output my-report.json
 
 # Scan subdirectory
-docker run --rm -v "$(pwd):/workspace" kitchencoder/hulud-scan:latest --dir ./src
+docker run --rm -v "$(pwd):/workspace" kitchencoder/package-scan:latest --dir ./src
 
 # Use custom CSV
-docker run --rm -v "$(pwd):/workspace" kitchencoder/hulud-scan:latest --csv /workspace/custom.csv
+docker run --rm -v "$(pwd):/workspace" kitchencoder/package-scan:latest --csv /workspace/custom.csv
 
 # List all compromised packages in the embedded database
-docker run --rm kitchencoder/hulud-scan:latest --list-affected-packages
+docker run --rm kitchencoder/package-scan:latest --list-affected-packages
 
 # Export threat database as raw CSV
-docker run --rm kitchencoder/hulud-scan:latest --list-affected-packages-csv > threats.csv
+docker run --rm kitchencoder/package-scan:latest --list-affected-packages-csv > threats.csv
 ```
 
 ## Automated Build & Push Script
@@ -89,21 +89,21 @@ Create a script for consistent releases:
 # tag-and-push.sh
 
 VERSION="0.1.0"
-IMAGE_NAME="kitchencoder/hulud-scan"
+IMAGE_NAME="kitchencoder/package-scan"
 
 echo "Building image..."
-docker build -t hulud-scan .
+docker build -t package-scan .
 
 echo "Tagging with version ${VERSION} and latest..."
-docker tag hulud-scan ${IMAGE_NAME}:${VERSION}
-docker tag hulud-scan ${IMAGE_NAME}:latest
+docker tag package-scan ${IMAGE_NAME}:${VERSION}
+docker tag package-scan ${IMAGE_NAME}:latest
 
 echo "Pushing to Docker Hub..."
 docker push ${IMAGE_NAME}:${VERSION}
 docker push ${IMAGE_NAME}:latest
 
 echo "✓ Pushed ${IMAGE_NAME}:${VERSION} and ${IMAGE_NAME}:latest"
-echo "✓ View at: https://hub.docker.com/r/kitchencoder/hulud-scan"
+echo "✓ View at: https://hub.docker.com/r/kitchencoder/package-scan"
 ```
 
 Make it executable:
@@ -122,13 +122,13 @@ Use semantic versioning (MAJOR.MINOR.PATCH):
 
 ```bash
 # Patch release (bug fixes)
-docker tag hulud-scan kitchencoder/hulud-scan:0.1.1
+docker tag package-scan kitchencoder/package-scan:0.1.1
 
 # Minor release (new features, like lock file support)
-docker tag hulud-scan kitchencoder/hulud-scan:0.2.0
+docker tag package-scan kitchencoder/package-scan:0.2.0
 
 # Major release (breaking changes)
-docker tag hulud-scan kitchencoder/hulud-scan:1.0.0
+docker tag package-scan kitchencoder/package-scan:1.0.0
 ```
 
 Always maintain a `latest` tag pointing to the most recent stable release.
@@ -137,48 +137,49 @@ Always maintain a `latest` tag pointing to the most recent stable release.
 
 ```bash
 # 1. Build the image
-docker build -t hulud-scan .
+docker build -t package-scan .
 
 # 2. Test locally
-docker run --rm -v "$(pwd)/examples:/scan" hulud-scan --dir /scan --no-save
+docker run --rm -v "$(pwd)/examples:/scan" package-scan --dir /scan --no-save
 
 # 3. Tag for Docker Hub
-docker tag hulud-scan kitchencoder/hulud-scan:0.1.0
-docker tag hulud-scan kitchencoder/hulud-scan:latest
+docker tag package-scan kitchencoder/package-scan:0.1.0
+docker tag package-scan kitchencoder/package-scan:latest
 
 # 4. Push to Docker Hub
-docker push kitchencoder/hulud-scan:0.1.0
-docker push kitchencoder/hulud-scan:latest
+docker push kitchencoder/package-scan:0.1.0
+docker push kitchencoder/package-scan:latest
 
 # 5. Test the public image
 docker run --rm -v "$(pwd)/examples:/scan" \
-  kitchencoder/hulud-scan:latest --dir /scan --no-save
+  kitchencoder/package-scan:latest --dir /scan --no-save
 ```
 
 ## Docker Hub Repository Settings
 
 ### Recommended Description
 
-On Docker Hub (`https://hub.docker.com/r/kitchencoder/hulud-scan`), add this description:
+On Docker Hub (`https://hub.docker.com/r/kitchencoder/package-scan`), add this description:
 
 ```
-NPM Package Threat Scanner for HULUD worm detection
+Multi-Ecosystem Package Threat Scanner
 
-Scans package.json files, lock files (npm/yarn/pnpm), and node_modules
-to identify compromised packages from the HULUD worm incident.
+Scans JavaScript (npm), Java (Maven/Gradle), and Python projects to identify
+compromised packages across multiple supply chain threats.
 
 Features:
-• Three-phase detection (package.json, lock files, installed packages)
-• Semantic version range matching
-• Lock file parsing for all major package managers
+• Multi-threat scanning with --threat flag
+• Multi-ecosystem support (npm, Maven/Gradle, pip/poetry/pipenv/conda)
+• Three-phase detection (manifests, lock files, installed packages)
+• Semantic version range matching for all ecosystems
 • Actionable remediation guidance with color-coded output
 • Runs as non-root user for security
-• Based on python:3.11-slim (~235MB)
+• Based on python:3.11-slim (~150MB)
 
 Quick Start:
-docker run --rm -v "$(pwd):/scan" kitchencoder/hulud-scan:latest --dir /scan
+docker run --rm -v "$(pwd):/workspace" kitchencoder/package-scan:latest
 
-Documentation: https://github.com/kitchencoder/hulud-scan
+Documentation: https://github.com/kitchencoder/package-scan
 ```
 
 ### Recommended README for Docker Hub
@@ -186,16 +187,42 @@ Documentation: https://github.com/kitchencoder/hulud-scan
 Add a comprehensive README on Docker Hub:
 
 ```markdown
-# hulud-scan
+# package-scan
 
-NPM Package Threat Scanner for identifying projects impacted by the HULUD worm.
+Multi-Ecosystem Package Threat Scanner for identifying compromised packages across
+JavaScript (npm), Java (Maven/Gradle), and Python projects.
 
 ## Usage
 
 ### Basic Scan
 
+Scan for all threats across all detected ecosystems:
+
 ```bash
-docker run --rm -v "$(pwd):/scan" kitchencoder/hulud-scan:latest --dir /scan
+docker run --rm -v "$(pwd):/workspace" kitchencoder/package-scan:latest
+```
+
+### Scan for Specific Threat
+
+Focus on a specific supply chain attack (e.g., sha1-Hulud):
+
+```bash
+docker run --rm -v "$(pwd):/workspace" kitchencoder/package-scan:latest --threat sha1-Hulud
+```
+
+### Scan Specific Ecosystem
+
+Target a specific package ecosystem:
+
+```bash
+# Scan only npm packages
+docker run --rm -v "$(pwd):/workspace" kitchencoder/package-scan:latest --ecosystem npm
+
+# Scan only Java packages (Maven/Gradle)
+docker run --rm -v "$(pwd):/workspace" kitchencoder/package-scan:latest --ecosystem maven
+
+# Scan only Python packages
+docker run --rm -v "$(pwd):/workspace" kitchencoder/package-scan:latest --ecosystem pip
 ```
 
 ### List Compromised Packages
@@ -204,56 +231,61 @@ View all packages in the embedded threat database:
 
 ```bash
 # Formatted display
-docker run --rm kitchencoder/hulud-scan:latest --list-affected-packages
+docker run --rm kitchencoder/package-scan:latest --list-affected-packages
 
 # Raw CSV output (for piping/saving)
-docker run --rm kitchencoder/hulud-scan:latest --list-affected-packages-csv > threats.csv
+docker run --rm kitchencoder/package-scan:latest --list-affected-packages-csv > threats.csv
 ```
-
-This displays all 1055+ compromised package versions without needing to mount any volumes. Use the CSV option to export the database for use in other tools.
 
 ### Custom Threat Database
 
 ```bash
 docker run --rm \
-  -v "$(pwd):/scan" \
-  -v "$(pwd)/custom-threats.csv:/data/threats.csv" \
-  kitchencoder/hulud-scan:latest --dir /scan --csv /data/threats.csv
+  -v "$(pwd):/workspace" \
+  -v "$(pwd)/custom-threat.csv:/app/custom.csv" \
+  kitchencoder/package-scan:latest --csv /app/custom.csv
 ```
 
 ### Save Report to Host
 
 ```bash
-# IMPORTANT: Output path must be in mounted volume (/scan)
-docker run --rm \
-  -v "$(pwd):/scan" \
-  kitchencoder/hulud-scan:latest --dir /scan --output /scan/report.json
+docker run --rm -v "$(pwd):/workspace" \
+  kitchencoder/package-scan:latest --output /workspace/report.json
 
-# Report will be saved at: ./report.json on your host
+# Report saved at: ./report.json on your host
 ```
-
-**Note:** The default output path (`hulud_scan_report.json`) saves to `/app/` inside the container, which is not accessible from the host. Always specify `--output /scan/report.json` to save the report to your mounted directory.
 
 ## What Gets Scanned
 
-1. **package.json files** - Checks declared dependency ranges
-2. **Lock files** - Parses exact versions from package-lock.json, yarn.lock, pnpm-lock.yaml
-3. **node_modules** - Scans actually installed packages
+### npm (JavaScript/Node.js)
+- **Manifests**: package.json
+- **Lock files**: package-lock.json, yarn.lock, pnpm-lock.yaml
+- **Installed**: node_modules/
+
+### Maven/Gradle (Java)
+- **Manifests**: pom.xml, build.gradle, build.gradle.kts
+- **Lock files**: gradle.lockfile
+
+### pip (Python)
+- **Manifests**: requirements.txt, pyproject.toml, Pipfile, environment.yml
+- **Lock files**: poetry.lock, Pipfile.lock
 
 ## Features
 
-- ✓ Comprehensive three-phase detection
-- ✓ Semantic version range matching
-- ✓ Support for npm, Yarn, and pnpm lock files
+- ✓ Multi-threat scanning with --threat flag
+- ✓ Multi-ecosystem support (npm, Maven/Gradle, pip/poetry/pipenv/conda)
+- ✓ Comprehensive three-phase detection (manifests, lock files, installed packages)
+- ✓ Semantic version range matching for all ecosystems
+- ✓ Support for all major package managers
 - ✓ Color-coded terminal output with emoji
 - ✓ Actionable remediation guidance
-- ✓ JSON report output
+- ✓ JSON report output with threat tracking
 - ✓ Runs as non-root user
-- ✓ Secure python:3.11-slim base image
+- ✓ Secure python:3.11-slim base image (~150MB)
 
 ## Source Code
 
-https://github.com/kitchencoder/hulud-scan
+https://github.com/kitchencoder/package-scan
 ```
 
 ## Verify Image Details
@@ -262,13 +294,13 @@ Check your image before pushing:
 
 ```bash
 # Check image size
-docker images kitchencoder/hulud-scan
+docker images kitchencoder/package-scan
 
 # Inspect image metadata
-docker inspect kitchencoder/hulud-scan:latest
+docker inspect kitchencoder/package-scan:latest
 
 # Test the image
-docker run --rm kitchencoder/hulud-scan:latest --help
+docker run --rm kitchencoder/package-scan:latest --help
 ```
 
 ## Troubleshooting
@@ -289,10 +321,10 @@ The image should be ~235MB. If it's significantly larger:
 
 ```bash
 # Check what's taking space
-docker history kitchencoder/hulud-scan:latest
+docker history kitchencoder/package-scan:latest
 
 # Rebuild with --no-cache
-docker build --no-cache -t hulud-scan .
+docker build --no-cache -t package-scan .
 ```
 
 ### Push Denied
@@ -309,18 +341,18 @@ docker login -u kitchencoder
 When you make changes:
 
 1. Update version in `pyproject.toml`
-2. Rebuild: `docker build -t hulud-scan .`
+2. Rebuild: `docker build -t package-scan .`
 3. Test locally
 4. Tag with new version
 5. Push both version tag and latest tag
 
 ```bash
 # Example: releasing v0.2.0
-docker build -t hulud-scan .
-docker tag hulud-scan kitchencoder/hulud-scan:0.2.0
-docker tag hulud-scan kitchencoder/hulud-scan:latest
-docker push kitchencoder/hulud-scan:0.2.0
-docker push kitchencoder/hulud-scan:latest
+docker build -t package-scan .
+docker tag package-scan kitchencoder/package-scan:0.2.0
+docker tag package-scan kitchencoder/package-scan:latest
+docker push kitchencoder/package-scan:0.2.0
+docker push kitchencoder/package-scan:latest
 ```
 
 ## CI/CD Integration (Optional)
@@ -359,8 +391,8 @@ jobs:
         with:
           push: true
           tags: |
-            kitchencoder/hulud-scan:${{ steps.meta.outputs.VERSION }}
-            kitchencoder/hulud-scan:latest
+            kitchencoder/package-scan:${{ steps.meta.outputs.VERSION }}
+            kitchencoder/package-scan:latest
 ```
 
 Add `DOCKERHUB_TOKEN` to your GitHub repository secrets.
