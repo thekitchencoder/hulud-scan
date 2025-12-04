@@ -65,10 +65,10 @@ def auto_detect_ecosystems(root_dir: Path) -> List[str]:
     detected = set()
 
     # Mapping of file patterns to ecosystems
+    # Note: Both Maven and Gradle use 'maven' ecosystem (Maven Central artifact format)
     indicators = {
         'npm': ['package.json'],
-        'maven': ['pom.xml'],
-        'gradle': ['build.gradle', 'build.gradle.kts'],
+        'maven': ['pom.xml', 'build.gradle', 'build.gradle.kts'],
         'pip': ['requirements.txt', 'pyproject.toml', 'setup.py', 'Pipfile'],
         'gem': ['Gemfile'],
     }
