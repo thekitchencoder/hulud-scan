@@ -68,12 +68,30 @@ The project uses a **single source of truth** approach for version management:
 - `Dockerfile` - LABEL version
 - `scripts/tag-and-push.sh` - VERSION variable
 
-### Releasing a New Version
+### Releasing a New Version (Automated via GitHub)
+
+**Recommended: Create a GitHub Release** (fully automated):
+
+1. **Create a new release on GitHub:**
+   - Go to: https://github.com/thekitchencoder/package-scan/releases/new
+   - Create a new tag: `v0.4.0` (use semantic versioning with `v` prefix)
+   - Fill in release title and description
+   - Click "Publish release"
+
+2. **GitHub Actions automatically:**
+   - Extracts version from tag (v0.4.0 → 0.4.0)
+   - Updates `pyproject.toml` with the new version
+   - Runs `sync-version.sh` to update Dockerfile and tag-and-push.sh
+   - Commits version updates back to the repository
+   - Builds and pushes Docker image to Docker Hub with proper tags
+
+**Manual Release Process** (local development):
+
+If you need to release manually without GitHub:
 
 1. **Update version in pyproject.toml:**
    ```bash
-   # Edit pyproject.toml, change version = "0.3.1" to your new version
-   vim pyproject.toml
+   vim pyproject.toml  # Change version = "0.3.1" to "0.4.0"
    ```
 
 2. **Sync version to Docker files:**
@@ -81,29 +99,34 @@ The project uses a **single source of truth** approach for version management:
    ./scripts/sync-version.sh
    ```
 
-3. **Review changes:**
+3. **Review and commit:**
    ```bash
    git diff
-   ```
-
-4. **Commit and tag:**
-   ```bash
    git add -A
-   git commit -m "chore: bump version to X.Y.Z"
-   git tag vX.Y.Z
+   git commit -m "chore: bump version to 0.4.0"
+   git tag v0.4.0
    git push && git push --tags
    ```
 
-5. **Build and push Docker image:**
+4. **Build and push Docker image:**
    ```bash
    ./scripts/tag-and-push.sh
    ```
+
+**How It Works:**
 
 The `sync-version.sh` script automatically updates:
 - `Dockerfile` LABEL version
 - `scripts/tag-and-push.sh` VERSION variable
 
-All Python code reads the version dynamically from package metadata, so no manual updates are needed there.
+Auto-synced files (read from package metadata at runtime):
+- `src/package_scan/__init__.py` - Uses `importlib.metadata.version()`
+- `docs/source/conf.py` - Uses `importlib.metadata.version()`
+
+**GitHub Actions Workflow:**
+- Workflow: `.github/workflows/DockerImageReleaseWorkflow.yml`
+- Triggers: When a new release is published on GitHub
+- Permissions: Requires `contents: write` to commit version updates
 
 ## Running the Tool
 
