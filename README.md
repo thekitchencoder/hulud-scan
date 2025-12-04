@@ -1,5 +1,6 @@
 # package-scan
 
+[![Tests](https://github.com/thekitchencoder/package-scan/actions/workflows/RunTests.yml/badge.svg)](https://github.com/thekitchencoder/package-scan/actions/workflows/RunTests.yml)
 [![Documentation Status](https://github.com/thekitchencoder/package-scan/actions/workflows/BuildAndDeployDocs.yml/badge.svg)](https://github.com/thekitchencoder/package-scan/actions/workflows/BuildAndDeployDocs.yml)
 [![Docker Build](https://github.com/thekitchencoder/package-scan/actions/workflows/DockerImageReleaseWorkflow.yml/badge.svg)](https://github.com/thekitchencoder/package-scan/actions/workflows/DockerImageReleaseWorkflow.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
