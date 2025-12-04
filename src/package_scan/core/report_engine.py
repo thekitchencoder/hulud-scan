@@ -171,8 +171,8 @@ class ReportEngine:
             rem = finding.remediation
             click.echo(click.style("  Remediation:", fg='cyan'))
             click.echo(f"    - strategy: {rem.strategy}")
-            if rem.suggested_spec:
-                click.echo(f"    - suggested_spec: " + click.style(rem.suggested_spec, fg='green', bold=True))
+            if rem.suggested_version:
+                click.echo(f"    - suggested_spec: " + click.style(rem.suggested_version, fg='green', bold=True))
 
     def _print_summary(self):
         """Print overall summary"""
