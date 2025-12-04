@@ -1,5 +1,5 @@
 from click.testing import CliRunner
-from hulud_scan.scan_npm_threats import cli
+from package_scan.cli import cli
 
 
 def test_cli_help():
@@ -7,4 +7,4 @@ def test_cli_help():
     runner = CliRunner()
     result = runner.invoke(cli, ["--help"])
     assert result.exit_code == 0
-    assert "Usage: npm-scan [OPTIONS]" in result.output
+    assert "Usage: hulud-scan [OPTIONS]" in result.output
