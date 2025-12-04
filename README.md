@@ -200,10 +200,10 @@ Lock file scanning is particularly valuable because it:
     -   Ensure you installed the project into your active virtual environment: `pip install -e .`
     -   Verify you activated the venv: `source .venv/bin/activate` (or Windows equivalent).
 
--   `npm-scan: command not found`
+-   `package-scan: command not found`
     -   Confirm the venv is active and `pip install -e .` completed successfully.
     -   On some shells, you may need to re-activate the venv after installation.
-    -   You can also run via Python directly: `python -m hulud_scan.scan_npm_threats --help`
+    -   You can also run via Python directly: `python -m package_scan.cli --help`
 
 -   CSV not found
     -   The tool looks at the path you pass to `--csv`. If not found, it will try `${--dir}/sha1-Hulud.csv`.
@@ -214,11 +214,16 @@ Lock file scanning is particularly valuable because it:
 Run from source without installing globally (still recommended to use a venv):
 
 ```bash
-python -m hulud_scan.scan_npm_threats --help
-python -m hulud_scan.scan_npm_threats --dir /path/to/project --csv /path/to/sha1-Hulud.csv
+python -m package_scan.cli --help
+python -m package_scan.cli --dir /path/to/project
 ```
 
-Run linting/formatting or tests (if you add them) as desired. The project is packaged via `pyproject.toml` using `setuptools`, with the source code located in the `src` directory. It exposes the console script `npm-scan` mapped to `hulud_scan.scan_npm_threats:cli`.
+The project is packaged via `pyproject.toml` using `setuptools`, with the source code located in the `src` directory. It exposes the console scripts:
+- `package-scan` - Main multi-ecosystem scanner
+- `hulud-scan` - Backward compatibility alias
+- `npm-scan` - Legacy npm-only command (redirects to main CLI with npm ecosystem)
+
+Run tests with `pytest` from the project root.
 
 ## License
 

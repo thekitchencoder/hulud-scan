@@ -349,21 +349,18 @@ hulud-scan/
 │       │   ├── threat_database.py    # ThreatDatabase class
 │       │   ├── report_engine.py      # ReportEngine class
 │       │   └── models.py             # Finding dataclass
-│       ├── adapters/
-│       │   ├── __init__.py
-│       │   ├── base.py               # EcosystemAdapter ABC
-│       │   ├── npm_adapter.py        # NpmAdapter
-│       │   ├── java_adapter.py       # JavaAdapter
-│       │   ├── python_adapter.py     # PythonAdapter
-│       │   └── ruby_adapter.py       # RubyAdapter
-│       └── scan_npm_threats.py       # Legacy npm-scan entry (for backward compat)
+│       └── adapters/
+│           ├── __init__.py
+│           ├── base.py               # EcosystemAdapter ABC
+│           ├── npm_adapter.py        # NpmAdapter
+│           ├── java_adapter.py       # JavaAdapter
+│           └── python_adapter.py     # PythonAdapter
 ├── tests/
 │   ├── test_threat_database.py
 │   ├── test_report_engine.py
 │   ├── test_npm_adapter.py
 │   ├── test_java_adapter.py
-│   ├── test_python_adapter.py
-│   └── test_ruby_adapter.py
+│   └── test_python_adapter.py
 ├── examples/
 │   ├── test-npm/              # npm test fixtures
 │   ├── test-maven/            # Maven test fixtures

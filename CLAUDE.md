@@ -118,17 +118,16 @@ The scanner uses a modular architecture with ecosystem-specific adapters:
 
 ```
 src/package_scan/
-├── cli.py                         # Multi-ecosystem CLI
+├── cli.py                         # Multi-ecosystem CLI (includes legacy npm-scan command)
 ├── core/                          # Shared components
 │   ├── models.py                  # Finding, Remediation dataclasses
 │   ├── threat_database.py         # Multi-ecosystem CSV loading
 │   └── report_engine.py           # Unified reporting
-├── adapters/                      # Ecosystem-specific scanners
-│   ├── base.py                    # EcosystemAdapter interface
-│   ├── npm_adapter.py             # JavaScript/Node.js
-│   ├── java_adapter.py            # Maven/Gradle
-│   └── python_adapter.py          # pip/poetry/pipenv/conda
-└── scan_npm_threats.py            # Legacy npm-only scanner (deprecated)
+└── adapters/                      # Ecosystem-specific scanners
+    ├── base.py                    # EcosystemAdapter interface
+    ├── npm_adapter.py             # JavaScript/Node.js
+    ├── java_adapter.py            # Maven/Gradle
+    └── python_adapter.py          # pip/poetry/pipenv/conda
 ```
 
 ### Core Components

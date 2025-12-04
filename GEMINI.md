@@ -1,15 +1,21 @@
-# Project: hulud-scan
+# Project: package-scan
 
 ## Project Overview
 
-`hulud-scan` is a Python-based command-line interface (CLI) tool designed to scan for threats in NPM packages. It specifically identifies projects impacted by the "HULUD worm" by checking `package.json` files and installed packages in `node_modules` against a provided CSV list of known compromised packages.
+`package-scan` is a Python-based command-line interface (CLI) tool designed to detect compromised packages across multiple ecosystems including npm (JavaScript), Maven/Gradle (Java), and pip (Python). It scans projects against a CSV database of known compromised packages from various supply chain attacks.
 
 The main technologies used are:
 - **Python:** The core language for the application.
 - **Click:** A Python package for creating command-line interfaces.
 - **semantic_version:** A library for parsing and comparing NPM semantic versioning (semver) strings.
+- **lxml:** For parsing Maven pom.xml files (optional dependency).
+- **PyYAML:** For parsing pnpm and conda files (optional dependency).
+- **toml/packaging:** For parsing Python package files (optional dependency).
 
-The project is structured as a single-file Python script (`scan_npm_threats.py`) that contains all the logic for scanning and reporting. It is packaged using `setuptools`, with project metadata and dependencies defined in `pyproject.toml` and `setup.py`.
+The project uses a modular architecture with ecosystem-specific adapters:
+- `cli.py` - Main multi-ecosystem CLI
+- `core/` - Shared components (ThreatDatabase, ReportEngine, Finding model)
+- `adapters/` - Ecosystem-specific scanners (npm, java, python)
 
 ## Building and Running
 
@@ -29,33 +35,51 @@ The project is structured as a single-file Python script (`scan_npm_threats.py`)
 
 ### Running the Scanner
 
-The primary way to run the scanner is through the `npm-scan` command:
+The primary way to run the scanner is through the `package-scan` command:
 
--   **Scan the current directory:**
+-   **Scan the current directory (all ecosystems):**
     ```bash
-    npm-scan
+    package-scan
     ```
 
 -   **Scan a specific directory:**
     ```bash
-    npm-scan --dir /path/to/your/project
+    package-scan --dir /path/to/your/project
+    ```
+
+-   **Scan for specific threat:**
+    ```bash
+    package-scan --threat sha1-Hulud
+    ```
+
+-   **Scan specific ecosystem:**
+    ```bash
+    package-scan --ecosystem npm
+    package-scan --ecosystem maven,pip  # Multiple ecosystems
     ```
 
 -   **Specify a different CSV file and output file:**
     ```bash
-    npm-scan --dir /path/to/your/project --csv /path/to/your/sha1-Hulud.csv --output /tmp/report.json
+    package-scan --csv /path/to/custom.csv --output /tmp/report.json
     ```
 
-You can also run the script directly using Python:
+You can also run via Python module:
 
 ```bash
-python scan_npm_threats.py --dir /path/to/your/project
+python -m package_scan.cli --help
 ```
+
+Legacy commands are still available for backward compatibility:
+- `npm-scan` - npm-only scanning (redirects to main CLI with npm ecosystem)
+- `hulud-scan` - alias for package-scan
 
 ## Development Conventions
 
 -   **Packaging:** The project uses `setuptools` for packaging, with configuration in `pyproject.toml`.
--   **CLI:** The command-line interface is built using the `click` library. The entry point is the `cli` function in `scan_npm_threats.py`.
--   **Dependencies:** Project dependencies are listed in `pyproject.toml` and `setup.py`.
--   **Code Style:** The code is well-structured and includes comments explaining the functionality.
--   **Testing:** There are no tests in the project. If you add any, you should also add instructions on how to run them.
+-   **CLI:** The command-line interface is built using the `click` library. The main entry point is the `cli` function in `cli.py`.
+-   **Architecture:** Modular design with ecosystem-specific adapters implementing a common interface.
+-   **Dependencies:**
+    - Core dependencies: click, semantic_version
+    - Optional dependencies: pyyaml (pnpm), lxml (maven), toml/packaging (python ecosystem)
+-   **Code Style:** The code is well-structured with clear separation of concerns.
+-   **Testing:** Run tests with `pytest` from the project root. Tests are located in the `tests/` directory.
