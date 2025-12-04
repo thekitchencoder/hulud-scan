@@ -20,35 +20,24 @@ from hulud_scan.adapters import get_adapter_class, get_available_ecosystems, ADA
 from hulud_scan.adapters.base import ProgressSpinner
 
 
-def resolve_csv_path(csv_file: Optional[str], scan_dir: str) -> Path:
+def resolve_threats_dir() -> Path:
     """
-    Resolve CSV file path with smart defaults
-
-    Args:
-        csv_file: User-provided CSV path or None
-        scan_dir: Directory being scanned
+    Resolve threats directory with smart defaults
 
     Returns:
-        Resolved CSV path
+        Resolved threats directory path
     """
-    if csv_file:
-        csv_path = Path(csv_file)
-        if not csv_path.is_absolute():
-            csv_path = Path.cwd() / csv_path
-        return csv_path
-
-    # Try multiple default locations
+    # Try multiple default locations for threats directory
     candidates = [
-        Path.cwd() / 'sha1-Hulud.csv',           # Current directory
-        Path('/app/sha1-Hulud.csv'),              # Docker app directory
-        Path(scan_dir) / 'sha1-Hulud.csv',        # Scan directory
+        Path.cwd() / 'threats',      # Current directory
+        Path('/app/threats'),         # Docker app directory
     ]
 
     for candidate in candidates:
-        if candidate.exists():
+        if candidate.exists() and candidate.is_dir():
             return candidate
 
-    # Default to first candidate even if it doesn't exist (for better error message)
+    # Default to first candidate (for better error message)
     return candidates[0]
 
 
@@ -129,11 +118,18 @@ def filter_available_ecosystems(requested: List[str]) -> List[str]:
     help="Root directory to scan recursively",
 )
 @click.option(
+    "--threat",
+    "threat_names",
+    type=str,
+    multiple=True,
+    help="Threat name to scan for (repeatable). Example: --threat sha1-Hulud --threat other-threat",
+)
+@click.option(
     "--csv",
     "csv_file",
     type=click.Path(exists=False, file_okay=True, dir_okay=False, path_type=str),
     default=None,
-    help="Path to CSV containing threat database (default: auto-detect)",
+    help="Path to custom CSV file (overrides --threat). For backward compatibility.",
 )
 @click.option(
     "--ecosystem",
@@ -177,6 +173,7 @@ def filter_available_ecosystems(requested: List[str]) -> List[str]:
 )
 def cli(
     scan_dir: str,
+    threat_names: tuple,
     csv_file: Optional[str],
     ecosystems: Optional[str],
     output_file: str,
@@ -213,18 +210,35 @@ def cli(
 
         sys.exit(0)
 
-    # Resolve CSV path
-    resolved_csv = resolve_csv_path(csv_file, scan_dir)
+    # Resolve threats directory
+    threats_dir = resolve_threats_dir()
 
     # Handle --list-affected-packages-csv (raw CSV dump)
+    # For custom CSV, output that; otherwise output all threats from directory
     if list_affected_packages_csv:
         try:
-            with open(resolved_csv, 'r', encoding='utf-8') as f:
-                sys.stdout.write(f.read())
+            if csv_file:
+                # Output custom CSV
+                with open(csv_file, 'r', encoding='utf-8') as f:
+                    sys.stdout.write(f.read())
+            else:
+                # Output all threats from directory
+                csv_files = sorted(threats_dir.glob("*.csv"))
+                if not csv_files:
+                    click.echo(click.style(
+                        f"✗ Error: No threat CSV files found in {threats_dir}",
+                        fg='red', bold=True), err=True)
+                    sys.exit(1)
+
+                for csv_path in csv_files:
+                    click.echo(f"# {csv_path.stem}")
+                    with open(csv_path, 'r', encoding='utf-8') as f:
+                        sys.stdout.write(f.read())
+                    click.echo()
             sys.exit(0)
-        except FileNotFoundError:
+        except FileNotFoundError as e:
             click.echo(click.style(
-                f"✗ Error: Threat database not found: {resolved_csv}",
+                f"✗ Error: Threat database file not found: {e}",
                 fg='red', bold=True), err=True)
             sys.exit(1)
         except Exception as e:
@@ -245,11 +259,21 @@ def cli(
         sys.exit(1)
 
     click.echo(f"\n{click.style('Scan Directory:', bold=True)} {scan_dir}")
-    click.echo(f"{click.style('Threat Database:', bold=True)} {resolved_csv}\n")
+    if csv_file:
+        click.echo(f"{click.style('Custom CSV:', bold=True)} {csv_file}")
+    elif threat_names:
+        click.echo(f"{click.style('Threats:', bold=True)} {', '.join(threat_names)}")
+    else:
+        click.echo(f"{click.style('Threats Directory:', bold=True)} {threats_dir} (all)")
+    click.echo()
 
     # Load threat database
-    threat_db = ThreatDatabase()
-    if not threat_db.load(str(resolved_csv)):
+    threat_db = ThreatDatabase(threats_dir=str(threats_dir))
+
+    # Convert threat_names tuple to list
+    threat_list = list(threat_names) if threat_names else None
+
+    if not threat_db.load_threats(threat_names=threat_list, custom_csv=csv_file):
         sys.exit(1)
 
     threat_db.print_summary()
@@ -335,6 +359,9 @@ def cli(
 
     # Initialize report engine
     report_engine = ReportEngine(scan_dir=scan_dir)
+
+    # Set threats in report engine
+    report_engine.set_threats(threat_db.get_loaded_threats())
 
     # Scan each ecosystem
     spinner = ProgressSpinner()
@@ -429,6 +456,7 @@ def npm_scan_cli(
     ctx.invoke(
         cli,
         scan_dir=scan_dir,
+        threat_names=(),  # Empty tuple for default behavior
         csv_file=csv_file,
         ecosystems='npm',  # Force npm ecosystem only
         output_file=output_file,

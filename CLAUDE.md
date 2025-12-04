@@ -36,13 +36,19 @@ hulud-scan is a Python CLI tool for detecting compromised packages across multip
 
 ### Multi-Ecosystem Scanning
 
-**Auto-detect and scan all ecosystems:**
+**Basic scanning:**
 ```bash
-hulud-scan                                    # Scan current directory
+hulud-scan                                    # Scan current directory (all threats)
 hulud-scan --dir /path/to/project             # Scan specific directory
-hulud-scan --csv /path/to/custom.csv          # Use custom threat database
 hulud-scan --output custom_report.json        # Custom output file
 hulud-scan --no-save                          # Don't save JSON report
+```
+
+**Threat selection:**
+```bash
+hulud-scan --threat sha1-Hulud                # Scan for specific threat
+hulud-scan --threat sha1-Hulud --threat other # Scan for multiple threats
+hulud-scan --csv /path/to/custom.csv          # Use custom threat CSV file
 ```
 
 **Scan specific ecosystem:**
@@ -80,14 +86,20 @@ docker build -t hulud-scan .
 
 **Scan a project:**
 ```bash
-# Scan current directory
+# Scan current directory (all threats)
 docker run --rm -v "$(pwd):/workspace" hulud-scan
 
-# Scan specific directory
-docker run --rm -v "/path/to/project:/workspace" hulud-scan
+# Scan for specific threat
+docker run --rm -v "$(pwd):/workspace" hulud-scan --threat sha1-Hulud
 
 # Scan specific ecosystem
 docker run --rm -v "$(pwd):/workspace" hulud-scan --ecosystem maven
+
+# Use custom threat CSV
+docker run --rm \
+  -v "$(pwd):/workspace" \
+  -v "$(pwd)/custom-threat.csv:/app/custom.csv" \
+  hulud-scan --csv /app/custom.csv
 
 # Get help
 docker run --rm hulud-scan --help
@@ -122,10 +134,12 @@ src/hulud_scan/
 ### Core Components
 
 **ThreatDatabase** (`core/threat_database.py`):
-- Loads CSV with format: `ecosystem,name,version`
+- Loads threats from `threats/` directory or custom CSV files
+- Supports loading specific threats by name (e.g., `sha1-Hulud`)
+- CSV format: `ecosystem,name,version`
 - Supports legacy format: `Package Name,Version` (defaults to npm)
-- Filters threats by ecosystem
-- Methods: `load()`, `get_compromised_versions()`, `get_all_packages()`, `get_ecosystems()`
+- Tracks which threats were loaded for reporting
+- Methods: `load_threats()`, `load()` (legacy), `get_compromised_versions()`, `get_all_packages()`, `get_ecosystems()`, `get_loaded_threats()`
 
 **ReportEngine** (`core/report_engine.py`):
 - Aggregates findings from all adapters
@@ -214,9 +228,26 @@ Each adapter implements the `EcosystemAdapter` interface:
 - `_scan_conda_environment()`: YAML parsing for conda (requires PyYAML)
 - `_get_matching_pep440_versions()`: PEP 440 compliance checking
 
-## CSV Threat Database
+## Threat Database System
 
-### Format
+### Multi-Threat Architecture
+
+The scanner supports partitioned threat databases, allowing you to:
+- **Scan for specific threats**: Use `--threat` to target specific supply chain attacks
+- **Scan for multiple threats**: Repeat `--threat` flag for multiple threats
+- **Scan all threats**: Default behavior loads all CSVs from `threats/` directory
+- **Use custom CSV**: Provide your own threat database with `--csv`
+
+### Threat Directory Structure
+
+```
+threats/
+├── sha1-Hulud.csv         # sha1-Hulud supply chain worm (npm + maven)
+├── sample-threats.csv     # Test threats for all ecosystems
+└── custom-threat.csv      # Your custom threats
+```
+
+### CSV Format
 
 **Current format (multi-ecosystem):**
 ```csv
@@ -224,6 +255,7 @@ ecosystem,name,version
 npm,left-pad,1.3.0
 npm,@accordproject/concerto-linter,3.24.1
 maven,org.apache.logging.log4j:log4j-core,2.14.1
+maven,org.mvnpm:posthog-node,4.18.1
 pip,requests,2.8.1
 ```
 
@@ -240,10 +272,16 @@ left-pad,1.3.0
 - **maven**: `groupId:artifactId` format (e.g., `org.springframework:spring-core`)
 - **pip**: Package name in lowercase (PyPI convention)
 
-### Current Database Stats
+### Current Threats
 
-- **Total**: 802 packages, 1,126 versions
-- **npm**: 789 packages, 1,055 versions
+**sha1-Hulud.csv** (sha1-Hulud supply chain worm):
+- **Total**: 790 packages, 1,056 versions
+- **npm**: 789 packages, 1,055 versions (compromised npm packages)
+- **maven**: 1 package, 1 version (org.mvnpm:posthog-node:4.18.1)
+
+**sample-threats.csv** (test/sample threats):
+- **Total**: 13 packages, 71 versions
+- **npm**: ~800 versions (subset of sha1-Hulud for testing)
 - **maven**: 4 packages, 35 versions (Log4j, Spring, Jackson, Commons Collections)
 - **pip**: 9 packages, 36 versions (requests, Django, Flask, PyYAML, etc.)
 
@@ -287,10 +325,11 @@ Each finding includes:
 
 ### JSON Output
 
-Structured report with ecosystem sections:
+Structured report with ecosystem sections and threat tracking:
 ```json
 {
   "total_findings": 31,
+  "threats": ["sha1-Hulud"],
   "ecosystems": ["maven", "npm", "pip"],
   "summary": {
     "maven": {"total": 10, "manifest": 10, "lockfile": 0, "unique_packages": 4},
@@ -308,7 +347,7 @@ Structured report with ecosystem sections:
 - User: Non-root `scanner:scanner`
 - Entrypoint: `hulud-scan` CLI
 - Working directory: `/workspace`
-- Threat database: Baked into `/app/sha1-Hulud.csv`
+- Threat databases: Baked into `/app/threats/` directory
 
 **Dependencies Included:**
 - Core: click, semantic_version
@@ -337,12 +376,18 @@ docker run --rm -v "$(pwd):/workspace" hulud-scan --no-save > /dev/null
 # Exit code: 0 = clean, 1 = threats found
 ```
 
+Scan for specific threat:
+```bash
+docker run --rm -v "$(pwd):/workspace" hulud-scan --threat sha1-Hulud
+# Only scans for sha1-Hulud worm packages
+```
+
 Custom threat database:
 ```bash
 docker run --rm \
   -v "$(pwd):/workspace" \
-  -v "$(pwd)/custom-threats.csv:/app/sha1-Hulud.csv" \
-  hulud-scan
+  -v "$(pwd)/custom-threats.csv:/app/custom.csv" \
+  hulud-scan --csv /app/custom.csv
 ```
 
 ## Test Fixtures
@@ -375,9 +420,18 @@ To add support for a new ecosystem (e.g., Ruby/gem, Rust/cargo):
 4. Register in `adapters/__init__.py`: `ADAPTER_REGISTRY['ecosystem'] = NewAdapter`
 5. Add ecosystem to auto-detection in `cli.py`
 6. Add test fixtures in `examples/test-ecosystem/`
-7. Add sample threats to `sha1-Hulud.csv`
+7. Add sample threats to `threats/` directory (create new CSV or add to existing threats)
 
 The architecture requires no changes to core components.
+
+## Adding New Threats
+
+To add a new threat database:
+
+1. Create a new CSV file in `threats/` directory (e.g., `threats/my-threat.csv`)
+2. Use the multi-ecosystem format: `ecosystem,name,version`
+3. Test with: `hulud-scan --threat my-threat --dir /path/to/project`
+4. The threat will automatically be included in default scans (no --threat flag)
 
 ## Performance Considerations
 

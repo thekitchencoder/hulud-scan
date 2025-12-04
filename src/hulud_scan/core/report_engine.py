@@ -29,6 +29,7 @@ class ReportEngine:
         """
         self.scan_dir = Path(scan_dir) if scan_dir else None
         self.findings: List[Finding] = []
+        self.threats: List[str] = []  # Track which threats were scanned
 
     def add_finding(self, finding: Finding):
         """Add a single finding"""
@@ -38,9 +39,14 @@ class ReportEngine:
         """Add multiple findings"""
         self.findings.extend(findings)
 
+    def set_threats(self, threats: List[str]):
+        """Set the list of threats that were scanned"""
+        self.threats = threats.copy()
+
     def clear(self):
-        """Clear all findings"""
+        """Clear all findings and threats"""
         self.findings.clear()
+        self.threats.clear()
 
     def get_findings_count(self) -> int:
         """Get total number of findings"""
@@ -55,6 +61,11 @@ class ReportEngine:
         click.echo("\n" + click.style("=" * 80, fg='white', bold=True))
         click.echo(click.style("SCAN REPORT", fg='white', bold=True))
         click.echo(click.style("=" * 80, fg='white', bold=True))
+
+        # Show which threats were scanned
+        if self.threats:
+            threat_list = ', '.join(self.threats)
+            click.echo(click.style(f"🔎 Scanned for threats: {threat_list}", fg='cyan', bold=True))
 
         if not self.findings:
             click.echo(click.style("\n✓ No compromised packages found!", fg='green', bold=True))
@@ -234,6 +245,7 @@ class ReportEngine:
             # Build report structure
             report = {
                 'total_findings': len(self.findings),
+                'threats': self.threats,
                 'ecosystems': self.get_ecosystems(),
                 'findings': findings_data
             }

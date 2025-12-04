@@ -2,7 +2,7 @@
 
 import csv
 import sys
-from typing import Dict, Set, Optional
+from typing import Dict, Set, Optional, List
 from collections import defaultdict
 from pathlib import Path
 import click
@@ -10,7 +10,12 @@ import click
 
 class ThreatDatabase:
     """
-    Manages threat data from CSV file with multi-ecosystem support
+    Manages threat data from CSV files with multi-ecosystem support
+
+    Supports:
+    - Loading specific threats by name (e.g., 'sha1-Hulud', 'other-threat')
+    - Loading all threats from threats/ directory
+    - Loading custom CSV files
 
     CSV Format (new):
         ecosystem,name,version
@@ -25,16 +30,66 @@ class ThreatDatabase:
         (defaults to npm ecosystem)
     """
 
-    def __init__(self):
-        self.csv_file: Optional[Path] = None
+    def __init__(self, threats_dir: str = "threats"):
+        self.threats_dir = Path(threats_dir)
+        self.loaded_threats: List[str] = []  # Track loaded threat names
         # Structure: {ecosystem: {package_name: set(versions)}}
         self.threats: Dict[str, Dict[str, Set[str]]] = defaultdict(lambda: defaultdict(set))
         self._is_loaded = False
-        self._format_version = None  # 'legacy' or 'multi-ecosystem'
+
+    def load_threats(self, threat_names: Optional[List[str]] = None,
+                    custom_csv: Optional[str] = None) -> bool:
+        """
+        Load threats by name or from custom CSV
+
+        Args:
+            threat_names: List of threat names to load (e.g., ['sha1-Hulud'])
+                         If None, loads all threats from threats/ directory
+            custom_csv: Path to custom CSV file (overrides threat_names)
+
+        Returns:
+            True if at least one threat loaded successfully, False otherwise
+        """
+        success = False
+
+        if custom_csv:
+            # Load custom CSV file
+            if self._load_csv(Path(custom_csv), threat_name='custom'):
+                success = True
+        elif threat_names:
+            # Load specific threats by name
+            for threat_name in threat_names:
+                csv_path = self.threats_dir / f"{threat_name}.csv"
+                if self._load_csv(csv_path, threat_name=threat_name):
+                    success = True
+        else:
+            # Load all threats from directory
+            if not self.threats_dir.exists():
+                click.echo(click.style(
+                    f"✗ Error: Threats directory not found: {self.threats_dir}",
+                    fg='red', bold=True), err=True)
+                return False
+
+            csv_files = sorted(self.threats_dir.glob("*.csv"))
+            if not csv_files:
+                click.echo(click.style(
+                    f"✗ Error: No threat CSV files found in {self.threats_dir}",
+                    fg='red', bold=True), err=True)
+                return False
+
+            for csv_path in csv_files:
+                threat_name = csv_path.stem
+                if self._load_csv(csv_path, threat_name=threat_name):
+                    success = True
+
+        if success:
+            self._is_loaded = True
+
+        return success
 
     def load(self, csv_file: str) -> bool:
         """
-        Load compromised packages from CSV file
+        Load compromised packages from CSV file (legacy method for backward compatibility)
 
         Args:
             csv_file: Path to CSV file
@@ -42,48 +97,58 @@ class ThreatDatabase:
         Returns:
             True if loaded successfully, False otherwise
         """
-        self.csv_file = Path(csv_file)
+        return self.load_threats(custom_csv=csv_file)
 
-        if not self.csv_file.exists():
-            click.echo(click.style(f"✗ Error: CSV file not found: {csv_file}", fg='red', bold=True), err=True)
+    def _load_csv(self, csv_path: Path, threat_name: str) -> bool:
+        """
+        Load a single CSV file
+
+        Args:
+            csv_path: Path to CSV file
+            threat_name: Name of the threat (for tracking)
+
+        Returns:
+            True if loaded successfully, False otherwise
+        """
+        if not csv_path.exists():
+            click.echo(click.style(f"✗ Error: Threat CSV file not found: {csv_path}", fg='red', bold=True), err=True)
             return False
 
         try:
-            with open(self.csv_file, 'r', encoding='utf-8') as f:
+            with open(csv_path, 'r', encoding='utf-8') as f:
                 reader = csv.DictReader(f)
                 headers = reader.fieldnames
 
                 if not headers:
-                    click.echo(click.style(f"✗ Error: CSV file has no headers", fg='red', bold=True), err=True)
+                    click.echo(click.style(f"✗ Error: CSV file has no headers: {csv_path}", fg='red', bold=True), err=True)
                     return False
 
                 # Detect format
                 if 'ecosystem' in headers and 'name' in headers and 'version' in headers:
-                    self._format_version = 'multi-ecosystem'
                     self._load_multi_ecosystem_format(reader)
                 elif 'Package Name' in headers and 'Version' in headers:
-                    self._format_version = 'legacy'
-                    click.echo(click.style(
-                        "⚠️  Warning: Using legacy CSV format (Package Name,Version). "
-                        "Consider upgrading to multi-ecosystem format (ecosystem,name,version).",
-                        fg='yellow'), err=True)
+                    if threat_name != 'custom':
+                        click.echo(click.style(
+                            f"⚠️  Warning: {threat_name}.csv uses legacy CSV format (Package Name,Version). "
+                            f"Consider upgrading to multi-ecosystem format (ecosystem,name,version).",
+                            fg='yellow'), err=True)
                     self._load_legacy_format(reader)
                 else:
                     click.echo(click.style(
-                        f"✗ Error: Unrecognized CSV format. "
+                        f"✗ Error: Unrecognized CSV format in {csv_path}. "
                         f"Expected headers: 'ecosystem,name,version' or 'Package Name,Version'. "
                         f"Got: {','.join(headers)}",
                         fg='red', bold=True), err=True)
                     return False
 
-            self._is_loaded = True
+            self.loaded_threats.append(threat_name)
             return True
 
         except UnicodeDecodeError as e:
-            click.echo(click.style(f"✗ Error: CSV file encoding issue: {e}", fg='red', bold=True), err=True)
+            click.echo(click.style(f"✗ Error: CSV file encoding issue in {csv_path}: {e}", fg='red', bold=True), err=True)
             return False
         except Exception as e:
-            click.echo(click.style(f"✗ Error loading CSV: {e}", fg='red', bold=True), err=True)
+            click.echo(click.style(f"✗ Error loading {csv_path}: {e}", fg='red', bold=True), err=True)
             return False
 
     def _load_multi_ecosystem_format(self, reader):
@@ -198,6 +263,15 @@ class ThreatDatabase:
 
         return set(self.threats.keys())
 
+    def get_loaded_threats(self) -> List[str]:
+        """
+        Get list of loaded threat names
+
+        Returns:
+            List of threat names that were loaded
+        """
+        return self.loaded_threats.copy()
+
     def get_package_count(self, ecosystem: Optional[str] = None) -> int:
         """
         Get count of unique packages in threat database
@@ -251,7 +325,12 @@ class ThreatDatabase:
         total_packages = self.get_package_count()
         total_versions = self.get_version_count()
 
-        click.echo(click.style(f"✓ Loaded threat database: {total_packages} packages, {total_versions} versions", fg='green', bold=True))
+        # Show loaded threats
+        if self.loaded_threats:
+            threat_list = ', '.join(self.loaded_threats)
+            click.echo(click.style(f"✓ Loaded threats: {threat_list}", fg='green', bold=True))
+
+        click.echo(click.style(f"✓ Threat database: {total_packages} packages, {total_versions} versions", fg='green', bold=True))
 
         if len(ecosystems) > 1:
             click.echo(click.style(f"  Ecosystems: {', '.join(sorted(ecosystems))}", fg='cyan'))

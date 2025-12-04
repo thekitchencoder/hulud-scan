@@ -21,8 +21,8 @@ RUN pip install --no-cache-dir -e . && \
     pip install --no-cache-dir pyyaml toml && \
     pip cache purge
 
-# Copy threat database
-COPY sha1-Hulud.csv ./
+# Copy threat databases
+COPY threats/ ./threats/
 
 # Create workspace directory for user files
 RUN mkdir -p /workspace && chown -R scanner:scanner /workspace /app
@@ -37,5 +37,5 @@ WORKDIR /workspace
 ENTRYPOINT ["hulud-scan"]
 
 # Default: scan current directory (workspace), use relative paths
-# CSV auto-detected from /app/sha1-Hulud.csv
+# Threats auto-detected from /app/threats/ directory
 CMD ["--dir", ".", "--output-relative-paths"]
