@@ -2,7 +2,7 @@
 # tag-and-push.sh
 # Script to build, tag, and push package-scan to Docker Hub
 
-VERSION="0.3.1"
+VERSION="0.3.2"
 IMAGE_NAME="kitchencoder/package-scan"
 
 set -e  # Exit on error
