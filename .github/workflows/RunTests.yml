@@ -75,15 +75,18 @@ jobs:
 
       - name: Test Docker image - Scan examples directory
         run: |
-          docker run --rm -v "$PWD/examples:/workspace" package-scan:test --dir /workspace --no-save
+          # Expect exit code 1 (threats found) since examples contain vulnerable packages
+          docker run --rm -v "$PWD/examples:/workspace" package-scan:test --dir /workspace --no-save || [ $? -eq 1 ]
 
       - name: Test Docker image - Scan for specific threat
         run: |
-          docker run --rm -v "$PWD/examples:/workspace" package-scan:test --dir /workspace --threat sample-threats --no-save
+          # Expect exit code 1 (threats found) since examples contain sample threats
+          docker run --rm -v "$PWD/examples:/workspace" package-scan:test --dir /workspace --threat sample-threats --no-save || [ $? -eq 1 ]
 
       - name: Test Docker image - Scan specific ecosystem
         run: |
-          docker run --rm -v "$PWD/examples:/workspace" package-scan:test --dir /workspace --ecosystem npm --no-save
+          # Expect exit code 1 (threats found) since examples contain vulnerable npm packages
+          docker run --rm -v "$PWD/examples:/workspace" package-scan:test --dir /workspace --ecosystem npm --no-save || [ $? -eq 1 ]
 
       - name: Verify Docker image security (non-root user)
         run: |
