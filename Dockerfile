@@ -3,8 +3,8 @@ FROM python:3.11-slim AS base
 
 # Metadata
 LABEL maintainer="Hulud Security"
-LABEL description="NPM Package Threat Scanner for HULUD worm detection"
-LABEL version="0.1.0"
+LABEL description="Multi-Ecosystem Package Threat Scanner (npm, Maven/Gradle, pip)"
+LABEL version="0.3.1"
 
 # Create non-root user for security
 RUN groupadd -r scanner && useradd -r -g scanner scanner
@@ -12,15 +12,17 @@ RUN groupadd -r scanner && useradd -r -g scanner scanner
 # Set up application directory
 WORKDIR /app
 
-# Install dependencies in a separate layer for caching
+# Copy application code first (needed for editable install)
 COPY pyproject.toml setup.py ./
+COPY src/ ./src/
+
+# Install dependencies
 RUN pip install --no-cache-dir -e . && \
-    pip install --no-cache-dir pyyaml && \
+    pip install --no-cache-dir pyyaml toml && \
     pip cache purge
 
-# Copy application code and default CSV file
-COPY scan_npm_threats.py ./
-COPY sha1-Hulud.csv ./
+# Copy threat databases
+COPY threats/ ./threats/
 
 # Create workspace directory for user files
 RUN mkdir -p /workspace && chown -R scanner:scanner /workspace /app
@@ -31,8 +33,9 @@ USER scanner
 # Set workspace as working directory (where commands run)
 WORKDIR /workspace
 
-# Set entrypoint to the scanner CLI
-ENTRYPOINT ["python", "/app/scan_npm_threats.py"]
+# Set entrypoint to the multi-ecosystem scanner CLI
+ENTRYPOINT ["package-scan"]
 
-# Default: scan current directory (workspace), CSV auto-detected, use relative paths
+# Default: scan current directory (workspace), use relative paths
+# Threats auto-detected from /app/threats/ directory
 CMD ["--dir", ".", "--output-relative-paths"]

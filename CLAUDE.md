@@ -4,7 +4,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-hulud-scan is a Python CLI tool for detecting npm packages compromised by the HULUD worm. It scans `package.json` files and `node_modules` directories against a CSV list of known compromised packages (sha1-Hulud.csv).
+package-scan is a Python CLI tool for detecting compromised packages across multiple ecosystems. It scans JavaScript (npm), Java (Maven/Gradle), and Python (pip/poetry/pipenv/conda) projects against a CSV database of known compromised packages.
+
+**Supported Ecosystems:**
+- **npm**: JavaScript/Node.js packages (package.json, lockfiles, node_modules)
+- **maven**: Java packages via Maven (pom.xml) and Gradle (build.gradle)
+- **pip**: Python packages via pip, Poetry, Pipenv, and conda
 
 ## Development Setup
 
@@ -14,144 +19,432 @@ hulud-scan is a Python CLI tool for detecting npm packages compromised by the HU
    source venv/bin/activate
    ```
 
-2. Install in editable mode:
+2. Install in editable mode with all optional dependencies:
    ```bash
+   pip install -e ".[all]"
+   # Or just core dependencies:
    pip install -e .
    ```
 
 3. Verify installation:
    ```bash
-   npm-scan --help
+   package-scan --help
+   package-scan --list-ecosystems
    ```
 
 ## Running the Tool
 
-**Basic usage:**
+### Multi-Ecosystem Scanning
+
+**Basic scanning:**
 ```bash
-npm-scan                                    # Scan current directory with ./sha1-Hulud.csv
-npm-scan --dir /path/to/project            # Scan specific directory
-npm-scan --csv /path/to/custom.csv         # Use custom CSV file
-npm-scan --output custom_report.json       # Custom output file
-npm-scan --no-save                         # Don't save JSON report
+package-scan                                    # Scan current directory (all threats)
+package-scan --dir /path/to/project             # Scan specific directory
+package-scan --output custom_report.json        # Custom output file
+package-scan --no-save                          # Don't save JSON report
 ```
 
-**Run directly from source:**
+**Threat selection:**
 ```bash
-python scan_npm_threats.py --help
-python -m scan_npm_threats --help
+package-scan --threat sha1-Hulud                # Scan for specific threat
+package-scan --threat sha1-Hulud --threat other # Scan for multiple threats
+package-scan --csv /path/to/custom.csv          # Use custom threat CSV file
 ```
 
-**Run with Docker:**
+**Scan specific ecosystem:**
 ```bash
-docker build -t hulud-scan .
-docker run --rm -v "$(pwd):/workspace" hulud-scan
-# Report saved as ./hulud_scan_report.json
+package-scan --ecosystem npm                    # npm only
+package-scan --ecosystem maven                  # Maven/Gradle only
+package-scan --ecosystem pip                    # Python only
+package-scan --ecosystem npm,maven,pip          # Multiple ecosystems
 ```
+
+**List supported ecosystems:**
+```bash
+package-scan --list-ecosystems
+```
+
+**List compromised packages in database:**
+```bash
+package-scan --list-affected-packages           # Formatted display
+package-scan --list-affected-packages-csv       # Raw CSV output
+```
+
+### Legacy npm-only Command
+
+For backward compatibility, the original `npm-scan` command is still available:
+```bash
+npm-scan --dir /path/to/project
+```
+
+### Docker Usage
+
+**Build image:**
+```bash
+docker build -t package-scan .
+```
+
+**Scan a project:**
+```bash
+# Scan current directory (all threats)
+docker run --rm -v "$(pwd):/workspace" package-scan
+
+# Scan for specific threat
+docker run --rm -v "$(pwd):/workspace" package-scan --threat sha1-Hulud
+
+# Scan specific ecosystem
+docker run --rm -v "$(pwd):/workspace" package-scan --ecosystem maven
+
+# Use custom threat CSV
+docker run --rm \
+  -v "$(pwd):/workspace" \
+  -v "$(pwd)/custom-threat.csv:/app/custom.csv" \
+  package-scan --csv /app/custom.csv
+
+# Get help
+docker run --rm package-scan --help
+```
+
+**Output:**
+- Reports saved as `./package_scan_report.json` in the mounted workspace
+- Use `--output` to change report filename
+- Use `--no-save` to skip saving (console output only)
 
 ## Architecture
 
+### Modular Design
+
+The scanner uses a modular architecture with ecosystem-specific adapters:
+
+```
+src/package_scan/
+├── cli.py                         # Multi-ecosystem CLI
+├── core/                          # Shared components
+│   ├── models.py                  # Finding, Remediation dataclasses
+│   ├── threat_database.py         # Multi-ecosystem CSV loading
+│   └── report_engine.py           # Unified reporting
+├── adapters/                      # Ecosystem-specific scanners
+│   ├── base.py                    # EcosystemAdapter interface
+│   ├── npm_adapter.py             # JavaScript/Node.js
+│   ├── java_adapter.py            # Maven/Gradle
+│   └── python_adapter.py          # pip/poetry/pipenv/conda
+└── scan_npm_threats.py            # Legacy npm-only scanner (deprecated)
+```
+
 ### Core Components
 
-**HuludScanner class** (scan_npm_threats.py):
-- `load_compromised_packages()`: Loads CSV into `compromised_packages` dict mapping package names to sets of compromised versions
-- `scan_directory()`: Walks directory tree, calling check methods for package.json files, lock files, and node_modules directories
-- `check_package_json()`: Scans dependency declarations (dependencies, devDependencies, peerDependencies, optionalDependencies) using semantic_version to check if version specs match compromised versions
-- `check_package_lock_json()`: Parses package-lock.json (npm v1-v3 formats) to extract exact resolved versions
-- `check_yarn_lock()`: Parses yarn.lock files using regex patterns to extract package versions
-- `check_pnpm_lock_yaml()`: Parses pnpm-lock.yaml files (requires optional PyYAML dependency)
-- `check_node_modules()`: Scans installed packages, handling scoped packages (@org/package)
-- `_check_installed_package()`: Checks individual installed package versions
-- `print_report()`: Generates console output with findings grouped by type (package.json, lockfile, installed)
-- `save_report()`: Writes JSON report to disk
+**ThreatDatabase** (`core/threat_database.py`):
+- Loads threats from `threats/` directory or custom CSV files
+- Supports loading specific threats by name (e.g., `sha1-Hulud`)
+- CSV format: `ecosystem,name,version`
+- Supports legacy format: `Package Name,Version` (defaults to npm)
+- Tracks which threats were loaded for reporting
+- Methods: `load_threats()`, `load()` (legacy), `get_compromised_versions()`, `get_all_packages()`, `get_ecosystems()`, `get_loaded_threats()`
 
-### Key Behavior
+**ReportEngine** (`core/report_engine.py`):
+- Aggregates findings from all adapters
+- Generates formatted console reports grouped by ecosystem
+- Exports JSON reports with ecosystem sections
+- Methods: `add_findings()`, `print_report()`, `save_report()`
 
-**Three-phase detection:**
-1. **package.json scanning**: Checks declared dependency ranges using semantic version matching
-2. **Lock file parsing**: Extracts exact resolved versions from package-lock.json, yarn.lock, or pnpm-lock.yaml
-3. **node_modules scanning**: Checks actually installed packages by reading their package.json files
+**Finding Model** (`core/models.py`):
+- Standardized finding structure across all ecosystems
+- Fields: ecosystem, finding_type (manifest/lockfile/installed), file_path, package_name, version, match_type (exact/range), declared_spec, remediation
+- Converts to dictionary for JSON export
 
-This comprehensive approach catches:
-- Vulnerable ranges that haven't been installed yet
-- Transitive dependencies only visible in lock files
-- Actually installed packages including nested dependencies
+### Ecosystem Adapters
 
-**Version matching:**
-- Uses `semantic_version.NpmSpec` to parse npm semver ranges (^, ~, >=, etc.)
-- For each compromised version, checks if it's included in the declared range
-- Falls back to exact string matching for non-standard version specs (git URLs, file paths)
-- Lock files provide exact version matches (no range checking needed)
-- Match types: `exact` (specific version) or `range` (semver range includes compromised versions)
+Each adapter implements the `EcosystemAdapter` interface:
 
-**Remediation suggestions:**
-- Exact matches: Suggests upgrading to next patch version (e.g., 1.2.3 → >=1.2.4)
-- Range matches: Suggests raising minimum version above highest compromised version
-- Provides package manager-specific override instructions (npm/yarn/pnpm)
+#### NpmAdapter (`adapters/npm_adapter.py`)
 
-**Lock file parsing:**
-- **package-lock.json**: Supports both old format (lockfileVersion 1/2 with nested dependencies) and new format (lockfileVersion 3 with flat packages object)
-- **yarn.lock**: Uses regex parsing to extract package names and versions from the custom yarn format
-- **pnpm-lock.yaml**: Parses YAML format with package keys like `/package-name/1.2.3` (requires PyYAML: `pip install pyyaml`)
-- Lock files reveal the complete dependency graph including transitive dependencies not visible in package.json
+**Supported Formats:**
+- `package.json`: Manifest with dependencies, devDependencies, peerDependencies, optionalDependencies
+- `package-lock.json`: npm lockfile (v1/v2/v3 formats)
+- `yarn.lock`: Yarn lockfile
+- `pnpm-lock.yaml`: pnpm lockfile (requires PyYAML)
+- `node_modules/`: Installed packages
 
-**Scoped packages:**
-- Handles @org/package format in package.json, lock files, and by recursing into @ directories in node_modules
+**Version Matching:**
+- Uses `semantic_version.NpmSpec` for npm semver ranges (^, ~, >=, etc.)
+- Handles scoped packages (@org/package)
+- Supports exact versions and version ranges
 
-**CSV format:**
-The tool expects a CSV with headers `Package Name` and `Version`:
+**Key Methods:**
+- `detect_projects()`: Finds directories with package.json
+- `scan_project()`: Scans manifests, lockfiles, and node_modules
+- `_scan_package_json()`: Parses JSON and checks dependencies
+- `_scan_package_lock_json()`: Handles v1/v2/v3 lockfile formats
+- `_scan_yarn_lock()`: Regex-based yarn.lock parsing
+- `_scan_pnpm_lock_yaml()`: YAML parsing for pnpm
+- `_scan_node_modules()`: Recursively scans installed packages
+
+#### JavaAdapter (`adapters/java_adapter.py`)
+
+**Supported Formats:**
+- `pom.xml`: Maven manifest
+- `build.gradle`: Gradle Groovy DSL
+- `build.gradle.kts`: Gradle Kotlin DSL
+- `gradle.lockfile`: Gradle 7+ lockfile
+
+**Version Matching:**
+- Maven version ranges: `[1.0,2.0)`, `[1.0,)`, `(,2.0)` with inclusive/exclusive bounds
+- Gradle dynamic versions: `1.2.+` converted to regex patterns
+- Exact versions: `1.2.3`
+
+**Key Methods:**
+- `detect_projects()`: Finds directories with pom.xml or build.gradle
+- `scan_project()`: Scans Maven and Gradle files
+- `_scan_pom_xml()`: XML parsing with namespace handling
+- `_scan_gradle_build()`: Regex-based Groovy/Kotlin DSL parsing
+- `_scan_gradle_lockfile()`: Parses Gradle lockfile format
+- `_is_maven_range()`: Detects Maven version ranges
+- `_get_matching_maven_versions()`: Range matching logic
+
+#### PythonAdapter (`adapters/python_adapter.py`)
+
+**Supported Formats:**
+- `requirements.txt`, `requirements-*.txt`: pip requirements files
+- `pyproject.toml`: Poetry manifest (tool.poetry.dependencies)
+- `poetry.lock`: Poetry lockfile (TOML format)
+- `Pipfile`: pipenv manifest (TOML format)
+- `Pipfile.lock`: pipenv lockfile (JSON format)
+- `environment.yml`: conda environment file (YAML format)
+
+**Version Matching:**
+- PEP 440 specifiers: `==`, `>=`, `<=`, `>`, `<`, `!=`, `~=`
+- Compound specifiers: `>=1.0,<2.0`
+- Poetry caret: `^1.2.3` → `>=1.2.3,<2.0.0`
+- Poetry tilde: `~1.2.3` → `>=1.2.3,<1.3.0`
+
+**Key Methods:**
+- `detect_projects()`: Finds directories with Python manifests
+- `scan_project()`: Scans all Python package manager files
+- `_scan_requirements_txt()`: Line-by-line requirements parsing
+- `_scan_pyproject_toml()`: TOML parsing for Poetry (requires toml/tomli)
+- `_scan_poetry_lock()`: TOML parsing for poetry.lock
+- `_scan_pipfile()`: TOML parsing for Pipfile
+- `_scan_pipfile_lock()`: JSON parsing for Pipfile.lock
+- `_scan_conda_environment()`: YAML parsing for conda (requires PyYAML)
+- `_get_matching_pep440_versions()`: PEP 440 compliance checking
+
+## Threat Database System
+
+### Multi-Threat Architecture
+
+The scanner supports partitioned threat databases, allowing you to:
+- **Scan for specific threats**: Use `--threat` to target specific supply chain attacks
+- **Scan for multiple threats**: Repeat `--threat` flag for multiple threats
+- **Scan all threats**: Default behavior loads all CSVs from `threats/` directory
+- **Use custom CSV**: Provide your own threat database with `--csv`
+
+### Threat Directory Structure
+
+```
+threats/
+├── sha1-Hulud.csv         # sha1-Hulud supply chain worm (npm + maven)
+├── sample-threats.csv     # Test threats for all ecosystems
+└── custom-threat.csv      # Your custom threats
+```
+
+### CSV Format
+
+**Current format (multi-ecosystem):**
+```csv
+ecosystem,name,version
+npm,left-pad,1.3.0
+npm,@accordproject/concerto-linter,3.24.1
+maven,org.apache.logging.log4j:log4j-core,2.14.1
+maven,org.mvnpm:posthog-node,4.18.1
+pip,requests,2.8.1
+```
+
+**Legacy format (npm-only, still supported):**
 ```csv
 Package Name,Version
 left-pad,1.3.0
-some-package,2.0.1
+@accordproject/concerto-linter,3.24.1
 ```
 
-## Project Structure
+### Package Naming Conventions
 
-- `scan_npm_threats.py`: Single-file implementation containing scanner logic and CLI
-- `pyproject.toml` / `setup.py`: Package configuration (setuptools)
-- `Dockerfile`: Multi-stage build on python:3.11-slim base
-- `.dockerignore`: Excludes unnecessary files from Docker build context
-- `sha1-Hulud.csv`: Default compromised package list (included in Docker image)
-- `examples/test-package/`: Test fixture with example package.json containing compromised dependencies
-- Console script entry point: `npm-scan` → `scan_npm_threats:cli`
+- **npm**: Package name as-is (supports scoped packages with @)
+- **maven**: `groupId:artifactId` format (e.g., `org.springframework:spring-core`)
+- **pip**: Package name in lowercase (PyPI convention)
+
+### Current Threats
+
+**sha1-Hulud.csv** (sha1-Hulud supply chain worm):
+- **Total**: 790 packages, 1,056 versions
+- **npm**: 789 packages, 1,055 versions (compromised npm packages)
+- **maven**: 1 package, 1 version (org.mvnpm:posthog-node:4.18.1)
+
+**sample-threats.csv** (test/sample threats):
+- **Total**: 13 packages, 71 versions
+- **npm**: ~800 versions (subset of sha1-Hulud for testing)
+- **maven**: 4 packages, 35 versions (Log4j, Spring, Jackson, Commons Collections)
+- **pip**: 9 packages, 36 versions (requests, Django, Flask, PyYAML, etc.)
 
 ## Dependencies
 
+### Core Dependencies (required)
 - `click>=8.1`: CLI framework
-- `semantic_version>=2.10`: npm semver range parsing and matching
-- `pyyaml` (optional): Required only for pnpm-lock.yaml parsing. Install with `pip install pyyaml`
+- `semantic_version>=2.10`: npm semver range parsing
+
+### Optional Dependencies
+
+Install extras for specific ecosystems:
+```bash
+pip install -e ".[pnpm]"      # PyYAML for pnpm-lock.yaml
+pip install -e ".[java]"       # lxml for Maven pom.xml
+pip install -e ".[python]"     # toml, packaging for Python
+pip install -e ".[all]"        # All optional dependencies
+```
+
+**pnpm**: `pyyaml>=6.0` (for pnpm-lock.yaml and conda environment.yml)
+**java**: `lxml>=4.9` (for advanced Maven pom.xml features, optional)
+**python**: `toml>=0.10`, `packaging>=21.0` (for Poetry and Pipenv)
+
+The adapters gracefully handle missing optional dependencies with warnings.
 
 ## Output Format
 
-The tool reports findings in three categories:
-1. **PACKAGE.JSON FILES**: Declared dependencies with vulnerable version ranges
-2. **LOCK FILES**: Exact resolved versions from package-lock.json / yarn.lock / pnpm-lock.yaml
-3. **INSTALLED PACKAGES**: Packages found in node_modules directories
+### Console Output
 
-Lock file findings are particularly valuable because they:
-- Show exact versions that will be installed (not just ranges)
-- Reveal transitive dependencies not declared in package.json
-- Provide the most accurate view of what `npm install` / `yarn install` / `pnpm install` would produce
+Findings are grouped by ecosystem and type:
+1. **MANIFEST FILES**: Declared dependencies with vulnerable versions/ranges
+2. **LOCK FILES**: Exact resolved versions from lockfiles
+3. **INSTALLED PACKAGES**: Actually installed packages (npm only)
+
+Each finding includes:
+- File path
+- Package name and version
+- Version specification (for manifests)
+- Match type (exact or range)
+- Remediation suggestions (upgrade strategy, suggested version)
+
+### JSON Output
+
+Structured report with ecosystem sections and threat tracking:
+```json
+{
+  "total_findings": 31,
+  "threats": ["sha1-Hulud"],
+  "ecosystems": ["maven", "npm", "pip"],
+  "summary": {
+    "maven": {"total": 10, "manifest": 10, "lockfile": 0, "unique_packages": 4},
+    "npm": {"total": 6, "manifest": 2, "lockfile": 4, "unique_packages": 4},
+    "pip": {"total": 15, "manifest": 15, "lockfile": 0, "unique_packages": 9}
+  },
+  "findings": [...]
+}
+```
 
 ## Docker Deployment
 
-The tool can be containerized for easy distribution and consistent execution environments.
+**Image Details:**
+- Base: `python:3.11-slim` (~150MB final size)
+- User: Non-root `scanner:scanner`
+- Entrypoint: `package-scan` CLI
+- Working directory: `/workspace`
+- Threat databases: Baked into `/app/threats/` directory
 
-**Dockerfile design:**
-- Base image: `python:3.11-slim` (Debian-based, security updates, small footprint ~235MB)
-- Security: Runs as non-root user `scanner:scanner`
-- Dependencies: Pre-installs click, semantic_version, and PyYAML for full lock file support
-- Default CSV: `sha1-Hulud.csv` baked into image at `/app/sha1-Hulud.csv`
-- Working directory: `/workspace` - single volume mount keeps it simple
-- Smart defaults: Automatically scans `.` and finds CSV in `/app/`
-- Output: Reports saved to `/workspace/hulud_scan_report.json` by default
+**Dependencies Included:**
+- Core: click, semantic_version
+- Optional: pyyaml, toml (for full ecosystem support)
 
-**Volume mounts:**
-- `/workspace`: Single mount point for your project (scans and reports here)
-- CSV auto-detected from `/app/sha1-Hulud.csv` (no mount needed)
-- Custom CSV: Just place in workspace and use `--csv custom.csv`
+**Auto-detection:**
+- Automatically detects ecosystems in mounted workspace
+- Scans npm, Maven/Gradle, and Python projects
+- Generates unified report
 
-**Build optimization:**
-- `.dockerignore` excludes venv, examples, IDE files to reduce build context
-- pip `--no-cache-dir` reduces image size
-- Multi-layer caching: dependencies layer separate from code layer
+**Volume Mounts:**
+- `/workspace`: Mount your project here
+- Reports saved to `/workspace/package_scan_report.json`
+
+**Example Workflows:**
+
+Scan a polyglot monorepo:
+```bash
+docker run --rm -v "$(pwd):/workspace" package-scan
+# Auto-detects all ecosystems, reports combined findings
+```
+
+CI/CD integration:
+```bash
+docker run --rm -v "$(pwd):/workspace" package-scan --no-save > /dev/null
+# Exit code: 0 = clean, 1 = threats found
+```
+
+Scan for specific threat:
+```bash
+docker run --rm -v "$(pwd):/workspace" package-scan --threat sha1-Hulud
+# Only scans for sha1-Hulud worm packages
+```
+
+Custom threat database:
+```bash
+docker run --rm \
+  -v "$(pwd):/workspace" \
+  -v "$(pwd)/custom-threats.csv:/app/custom.csv" \
+  package-scan --csv /app/custom.csv
+```
+
+## Test Fixtures
+
+The repository includes test fixtures for all supported ecosystems:
+
+- `examples/test-package/`: npm project with vulnerable packages
+- `examples/test-maven/`: Maven pom.xml with vulnerable Java dependencies
+- `examples/test-gradle/`: Gradle build.gradle with vulnerable Java dependencies
+- `examples/test-python/`: Python project with requirements.txt, pyproject.toml, and Pipfile
+
+Run tests:
+```bash
+package-scan --dir examples --no-save
+# Should detect 31 total findings across all ecosystems
+```
+
+## Adding New Ecosystems
+
+To add support for a new ecosystem (e.g., Ruby/gem, Rust/cargo):
+
+1. Create adapter: `src/package_scan/adapters/new_adapter.py`
+2. Inherit from `EcosystemAdapter`
+3. Implement required methods:
+   - `_get_ecosystem_name()`: Return ecosystem identifier
+   - `get_manifest_files()`: List of manifest filenames
+   - `get_lockfile_names()`: List of lockfile filenames
+   - `detect_projects()`: Find project directories
+   - `scan_project()`: Scan manifests, lockfiles, installed packages
+4. Register in `adapters/__init__.py`: `ADAPTER_REGISTRY['ecosystem'] = NewAdapter`
+5. Add ecosystem to auto-detection in `cli.py`
+6. Add test fixtures in `examples/test-ecosystem/`
+7. Add sample threats to `threats/` directory (create new CSV or add to existing threats)
+
+The architecture requires no changes to core components.
+
+## Adding New Threats
+
+To add a new threat database:
+
+1. Create a new CSV file in `threats/` directory (e.g., `threats/my-threat.csv`)
+2. Use the multi-ecosystem format: `ecosystem,name,version`
+3. Test with: `package-scan --threat my-threat --dir /path/to/project`
+4. The threat will automatically be included in default scans (no --threat flag)
+
+## Performance Considerations
+
+- **Lazy Loading**: Only loads adapters for detected ecosystems
+- **Skip Directories**: Automatically skips node_modules, .git, venv, build, etc.
+- **Streaming**: Parses large files line-by-line where possible
+- **No Execution**: Parses configuration files only, never executes package managers
+- **Caching**: Single CSV load shared across all adapters
+
+## Security Considerations
+
+- **Sandboxed**: Only reads files, never executes commands
+- **Non-root**: Docker runs as unprivileged user
+- **Path Validation**: Stays within scan directory
+- **No Network**: No external API calls or downloads
+- **Static Analysis**: Threat detection is purely static file parsing

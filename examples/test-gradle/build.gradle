@@ -1,0 +1,41 @@
+plugins {
+    id 'java'
+    id 'application'
+}
+
+group = 'com.example'
+version = '1.0.0'
+
+sourceCompatibility = '11'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // Vulnerable Log4j versions (CVE-2021-44228 and others)
+    implementation 'org.apache.logging.log4j:log4j-core:2.14.1'
+
+    // Vulnerable Spring version
+    implementation 'org.springframework:spring-core:5.2.2.RELEASE'
+
+    // Vulnerable Commons Collections
+    implementation 'commons-collections:commons-collections:3.2.1'
+
+    // Vulnerable Jackson Databind
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.9.4'
+
+    // Dynamic version that might include vulnerabilities
+    testImplementation 'com.fasterxml.jackson.core:jackson-databind:2.9.+'
+
+    // Test dependencies
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.8.1'
+}
+
+test {
+    useJUnitPlatform()
+}
+
+application {
+    mainClass = 'com.example.Main'
+}
