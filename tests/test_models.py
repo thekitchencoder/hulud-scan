@@ -27,7 +27,7 @@ def test_remediation_to_dict():
     result = rem.to_dict()
 
     assert result['strategy'] == 'remove'
-    assert result['suggested_version'] is None
+    assert 'suggested_version' not in result  # Not included when None
     assert result['notes'] == 'Package is deprecated'
 
 
@@ -94,8 +94,8 @@ def test_finding_to_dict_minimal():
     assert result['package_name'] == 'lodash'
     assert result['version'] == '4.17.20'
     assert result['match_type'] == 'exact'
-    assert result['declared_spec'] is None
-    assert result['remediation'] is None
+    assert 'declared_spec' not in result  # Not included when None
+    assert 'remediation' not in result  # Not included when None
 
 
 def test_finding_to_dict_with_remediation():
@@ -128,11 +128,11 @@ def test_finding_to_dict_with_remediation():
 def test_finding_from_legacy_npm_dict():
     """Test converting legacy npm-only dict to Finding."""
     legacy = {
-        'type': 'manifest',
+        'type': 'package.json',  # Changed to match actual type mapping
         'file': '/project/package.json',
         'package': 'old-package',
         'version': '0.9.0',
-        'declared_version': '^0.9.0'
+        'version_spec': '^0.9.0'  # Changed from 'declared_version' to match actual implementation
     }
 
     finding = Finding.from_legacy_npm_dict(legacy)
@@ -350,4 +350,4 @@ def test_finding_with_none_remediation():
     )
 
     result = finding.to_dict()
-    assert result['remediation'] is None
+    assert 'remediation' not in result  # Not included when None

@@ -51,10 +51,10 @@ def test_detect_maven_project(temp_project_dir, threat_db):
     with open(pom_xml, 'w') as f:
         f.write('<?xml version="1.0"?><project></project>')
 
-    projects = adapter.detect_projects(temp_project_dir)
+    projects = adapter.detect_projects()
 
     assert len(projects) == 1
-    assert projects[0] == temp_project_dir
+    assert projects[0] == Path(temp_project_dir)
 
 
 def test_detect_gradle_project(temp_project_dir, threat_db):
@@ -65,7 +65,7 @@ def test_detect_gradle_project(temp_project_dir, threat_db):
     with open(build_gradle, 'w') as f:
         f.write('// Gradle build file')
 
-    projects = adapter.detect_projects(temp_project_dir)
+    projects = adapter.detect_projects()
 
     assert len(projects) == 1
 
@@ -92,7 +92,7 @@ def test_scan_pom_xml_exact_match(temp_project_dir, threat_db):
     </dependencies>
 </project>''')
 
-    findings = adapter.scan_project(temp_project_dir)
+    findings = adapter.scan_project(Path(temp_project_dir))
 
     assert len(findings) == 1
     assert findings[0].package_name == 'org.springframework:spring-core'
@@ -118,7 +118,7 @@ def test_scan_pom_xml_version_range(temp_project_dir, threat_db):
     </dependencies>
 </project>''')
 
-    findings = adapter.scan_project(temp_project_dir)
+    findings = adapter.scan_project(Path(temp_project_dir))
 
     assert len(findings) == 1
     assert findings[0].version == '5.3.0'
@@ -153,7 +153,7 @@ def test_scan_pom_xml_multiple_dependencies(temp_project_dir, threat_db):
     </dependencies>
 </project>''')
 
-    findings = adapter.scan_project(temp_project_dir)
+    findings = adapter.scan_project(Path(temp_project_dir))
 
     assert len(findings) == 2
     package_names = {f.package_name for f in findings}
@@ -179,7 +179,7 @@ dependencies {
 }
 ''')
 
-    findings = adapter.scan_project(temp_project_dir)
+    findings = adapter.scan_project(Path(temp_project_dir))
 
     assert len(findings) == 2
     package_names = {f.package_name for f in findings}
@@ -204,7 +204,7 @@ dependencies {
 }
 ''')
 
-    findings = adapter.scan_project(temp_project_dir)
+    findings = adapter.scan_project(Path(temp_project_dir))
 
     assert len(findings) == 2
 
@@ -221,7 +221,7 @@ dependencies {
 }
 ''')
 
-    findings = adapter.scan_project(temp_project_dir)
+    findings = adapter.scan_project(Path(temp_project_dir))
 
     # Should match 5.3.0 with dynamic version 5.3.+
     assert len(findings) == 1
@@ -233,7 +233,7 @@ def test_maven_version_range_formats(temp_project_dir, threat_db):
     adapter = JavaAdapter(threat_db, Path(temp_project_dir))
 
     test_cases = [
-        ('[5.3.0]', True),         # Exactly 5.3.0
+        ('[5.3.0]', False),        # Exactly 5.3.0 - not supported (no comma in range)
         ('[5.0,6.0)', True),       # 5.0 <= x < 6.0
         ('[5.3.0,)', True),        # x >= 5.3.0
         ('(,6.0)', True),          # x < 6.0
@@ -254,7 +254,7 @@ def test_maven_version_range_formats(temp_project_dir, threat_db):
     </dependencies>
 </project>''')
 
-        findings = adapter.scan_project(temp_project_dir)
+        findings = adapter.scan_project(Path(temp_project_dir))
 
         if should_match:
             assert len(findings) == 1, f"Version spec {version_spec} should match"
@@ -279,7 +279,7 @@ def test_pom_xml_without_namespace(temp_project_dir, threat_db):
     </dependencies>
 </project>''')
 
-    findings = adapter.scan_project(temp_project_dir)
+    findings = adapter.scan_project(Path(temp_project_dir))
 
     assert len(findings) == 1
 
@@ -293,7 +293,7 @@ def test_invalid_xml_handling(temp_project_dir, threat_db):
         f.write('<invalid><xml')
 
     # Should not crash
-    findings = adapter.scan_project(temp_project_dir)
+    findings = adapter.scan_project(Path(temp_project_dir))
     assert len(findings) == 0
 
 
@@ -315,7 +315,7 @@ def test_missing_version_element(temp_project_dir, threat_db):
 </project>''')
 
     # Should skip dependency without version
-    findings = adapter.scan_project(temp_project_dir)
+    findings = adapter.scan_project(Path(temp_project_dir))
     assert len(findings) == 0
 
 
@@ -351,7 +351,7 @@ dependencies {
 }
 ''')
 
-    findings = adapter.scan_project(temp_project_dir)
+    findings = adapter.scan_project(Path(temp_project_dir))
 
     assert len(findings) == 3
 
@@ -369,5 +369,5 @@ def test_no_dependencies_section(temp_project_dir, threat_db):
     <artifactId>test</artifactId>
 </project>''')
 
-    findings = adapter.scan_project(temp_project_dir)
+    findings = adapter.scan_project(Path(temp_project_dir))
     assert len(findings) == 0

@@ -44,6 +44,20 @@ package-scan --output custom_report.json        # Custom output file
 package-scan --no-save                          # Don't save JSON report
 ```
 
+**Path formatting (via environment variable):**
+```bash
+# Default: absolute paths
+package-scan --dir /path/to/project             # Shows: /path/to/project/package.json
+
+# Relative paths
+export SCAN_PATH_PREFIX="."
+package-scan --dir /path/to/project             # Shows: ./package.json
+
+# Custom prefix (useful for reporting)
+export SCAN_PATH_PREFIX="/home/user/projects"
+package-scan --dir /path/to/project             # Shows: /home/user/projects/package.json
+```
+
 **Threat selection:**
 ```bash
 package-scan --threat sha1-Hulud                # Scan for specific threat
@@ -86,7 +100,7 @@ docker build -t package-scan .
 
 **Scan a project:**
 ```bash
-# Scan current directory (all threats)
+# Scan current directory (all threats) - uses relative paths by default
 docker run --rm -v "$(pwd):/workspace" package-scan
 
 # Scan for specific threat
@@ -94,6 +108,17 @@ docker run --rm -v "$(pwd):/workspace" package-scan --threat sha1-Hulud
 
 # Scan specific ecosystem
 docker run --rm -v "$(pwd):/workspace" package-scan --ecosystem maven
+
+# Use full host paths in output (instead of ./package.json)
+docker run --rm -v "$(pwd):/workspace" -e SCAN_PATH_PREFIX="$(pwd)" package-scan --threat sha1-Hulud
+# Output will show: /home/user/project/package.json
+
+# Show Docker paths instead of relative
+docker run --rm -v "$(pwd):/workspace" -e SCAN_PATH_PREFIX="/workspace" package-scan
+# Output will show: /workspace/package.json
+
+# Disable path conversion (show absolute paths as-is)
+docker run --rm -v "$(pwd):/workspace" -e SCAN_PATH_PREFIX="" package-scan
 
 # Use custom threat CSV
 docker run --rm \
@@ -104,6 +129,13 @@ docker run --rm \
 # Get help
 docker run --rm package-scan --help
 ```
+
+**Path formatting in Docker:**
+The Docker image sets `SCAN_PATH_PREFIX="."` by default to show clean relative paths (`./package.json`) instead of Docker paths (`/workspace/package.json`). You can override this with `-e SCAN_PATH_PREFIX=` to customize path output:
+- `"."` = relative paths (default)
+- `"$(pwd)"` = full host system paths
+- `"/workspace"` = Docker container paths
+- `""` = no conversion (absolute paths as scanned)
 
 **Output:**
 - Reports saved as `./package_scan_report.json` in the mounted workspace

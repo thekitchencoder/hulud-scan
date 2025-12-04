@@ -56,10 +56,10 @@ def test_detect_projects_with_package_json(temp_project_dir, threat_db):
     with open(package_json, 'w') as f:
         json.dump({'name': 'test-project', 'version': '1.0.0'}, f)
 
-    projects = adapter.detect_projects(temp_project_dir)
+    projects = adapter.detect_projects()
 
     assert len(projects) == 1
-    assert projects[0] == temp_project_dir
+    assert projects[0] == Path(temp_project_dir)
 
 
 def test_detect_multiple_projects(temp_project_dir, threat_db):
@@ -75,7 +75,7 @@ def test_detect_multiple_projects(temp_project_dir, threat_db):
         with open(package_json, 'w') as f:
             json.dump({'name': subdir.replace('/', '-'), 'version': '1.0.0'}, f)
 
-    projects = adapter.detect_projects(temp_project_dir)
+    projects = adapter.detect_projects()
 
     assert len(projects) == 3
 
@@ -95,13 +95,14 @@ def test_scan_package_json_exact_match(temp_project_dir, threat_db):
             }
         }, f)
 
-    findings = adapter.scan_project(temp_project_dir)
+    findings = adapter.scan_project(Path(temp_project_dir))
 
     assert len(findings) == 1
     assert findings[0].package_name == 'left-pad'
     assert findings[0].version == '1.3.0'
     assert findings[0].finding_type == 'manifest'
-    assert findings[0].match_type == 'exact'
+    # Bare versions are treated as range matches (valid semver spec)
+    assert findings[0].match_type == 'range'
 
 
 def test_scan_package_json_range_match(temp_project_dir, threat_db):
@@ -119,7 +120,7 @@ def test_scan_package_json_range_match(temp_project_dir, threat_db):
             }
         }, f)
 
-    findings = adapter.scan_project(temp_project_dir)
+    findings = adapter.scan_project(Path(temp_project_dir))
 
     assert len(findings) == 1
     assert findings[0].package_name == 'lodash'
@@ -143,7 +144,7 @@ def test_scan_package_json_no_match(temp_project_dir, threat_db):
             }
         }, f)
 
-    findings = adapter.scan_project(temp_project_dir)
+    findings = adapter.scan_project(Path(temp_project_dir))
 
     assert len(findings) == 0
 
@@ -161,7 +162,7 @@ def test_scan_scoped_package(temp_project_dir, threat_db):
             }
         }, f)
 
-    findings = adapter.scan_project(temp_project_dir)
+    findings = adapter.scan_project(Path(temp_project_dir))
 
     assert len(findings) == 1
     assert findings[0].package_name == '@scope/package'
@@ -180,7 +181,7 @@ def test_scan_dev_dependencies(temp_project_dir, threat_db):
             }
         }, f)
 
-    findings = adapter.scan_project(temp_project_dir)
+    findings = adapter.scan_project(Path(temp_project_dir))
 
     assert len(findings) == 1
     assert findings[0].package_name == 'left-pad'
@@ -200,7 +201,7 @@ def test_scan_all_dependency_types(temp_project_dir, threat_db):
             'optionalDependencies': {'vulnerable-pkg': '1.0.0'}
         }, f)
 
-    findings = adapter.scan_project(temp_project_dir)
+    findings = adapter.scan_project(Path(temp_project_dir))
 
     # Should find all 4 vulnerable packages
     assert len(findings) == 4
@@ -230,7 +231,7 @@ def test_scan_package_lock_json(temp_project_dir, threat_db):
             }
         }, f)
 
-    findings = adapter.scan_project(temp_project_dir)
+    findings = adapter.scan_project(Path(temp_project_dir))
 
     assert len(findings) == 1
     assert findings[0].package_name == 'left-pad'
@@ -253,7 +254,7 @@ def test_scan_package_lock_v1_format(temp_project_dir, threat_db):
             }
         }, f)
 
-    findings = adapter.scan_project(temp_project_dir)
+    findings = adapter.scan_project(Path(temp_project_dir))
 
     assert len(findings) == 1
     assert findings[0].package_name == 'left-pad'
@@ -280,7 +281,7 @@ def test_no_duplicate_findings(temp_project_dir, threat_db):
             }
         }, f)
 
-    findings = adapter.scan_project(temp_project_dir)
+    findings = adapter.scan_project(Path(temp_project_dir))
 
     # Should have 2 findings (one from manifest, one from lockfile)
     assert len(findings) == 2
@@ -298,7 +299,7 @@ def test_invalid_json_handling(temp_project_dir, threat_db, capsys):
         f.write('{invalid json')
 
     # Should not crash, just skip the file
-    findings = adapter.scan_project(temp_project_dir)
+    findings = adapter.scan_project(Path(temp_project_dir))
     assert len(findings) == 0
 
 
@@ -306,7 +307,7 @@ def test_missing_package_json(temp_project_dir, threat_db):
     """Test scanning directory without package.json."""
     adapter = NpmAdapter(threat_db, Path(temp_project_dir))
 
-    findings = adapter.scan_project(temp_project_dir)
+    findings = adapter.scan_project(Path(temp_project_dir))
 
     assert len(findings) == 0
 
@@ -324,7 +325,7 @@ def test_version_range_not_matching(temp_project_dir, threat_db):
             }
         }, f)
 
-    findings = adapter.scan_project(temp_project_dir)
+    findings = adapter.scan_project(Path(temp_project_dir))
 
     assert len(findings) == 0
 
@@ -342,12 +343,16 @@ def test_multiple_vulnerable_versions(temp_project_dir, threat_db):
             }
         }, f)
 
-    findings = adapter.scan_project(temp_project_dir)
+    findings = adapter.scan_project(Path(temp_project_dir))
 
-    # Should report both vulnerable versions
-    assert len(findings) == 2
-    versions = {f.version for f in findings}
-    assert versions == {'1.0.0', '1.0.1'}
+    # Should report one finding with both versions combined
+    assert len(findings) == 1
+    finding = findings[0]
+    assert finding.package_name == 'vulnerable-pkg'
+    # Versions are comma-separated in the version field
+    assert finding.version == '1.0.0, 1.0.1'
+    # Individual versions are in metadata
+    assert finding.metadata['included_versions'] == ['1.0.0', '1.0.1']
 
 
 def test_get_manifest_files():

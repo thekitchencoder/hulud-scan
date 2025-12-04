@@ -137,33 +137,47 @@ def test_save_report(sample_findings):
 
 
 def test_save_report_with_relative_paths(sample_findings):
-    """Test saving report with relative paths."""
-    engine = ReportEngine()
-    engine.add_findings(sample_findings)
-
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
-        temp_path = f.name
+    """Test saving report with relative paths via environment variable."""
+    # Set environment variable to trigger relative path conversion
+    old_env = os.environ.get('SCAN_PATH_PREFIX')
+    os.environ['SCAN_PATH_PREFIX'] = '.'
 
     try:
-        engine.save_report(temp_path, base_path='/project')
+        engine = ReportEngine(scan_dir='/project')
+        engine.add_findings(sample_findings)
 
-        with open(temp_path, 'r') as f:
-            report = json.load(f)
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+            temp_path = f.name
 
-        # Check that paths are relative
-        for finding in report['findings']:
-            assert not finding['file_path'].startswith('/')
-            # Should be relative to /project
-            assert finding['file_path'] in ['package.json', 'package-lock.json', 'pom.xml', 'requirements.txt']
+        try:
+            engine.save_report(temp_path)
 
+            with open(temp_path, 'r') as f:
+                report = json.load(f)
+
+            # Check that paths are relative
+            for finding in report['findings']:
+                # Should start with ./ for relative paths
+                assert finding['file_path'].startswith('./')
+                # Should be relative to /project
+                assert finding['file_path'] in ['./package.json', './package-lock.json', './pom.xml', './requirements.txt']
+
+        finally:
+            if os.path.exists(temp_path):
+                os.unlink(temp_path)
     finally:
-        if os.path.exists(temp_path):
-            os.unlink(temp_path)
+        # Restore original environment
+        if old_env is None:
+            os.environ.pop('SCAN_PATH_PREFIX', None)
+        else:
+            os.environ['SCAN_PATH_PREFIX'] = old_env
 
 
 def test_save_report_with_threats():
     """Test saving report with threat tracking."""
-    engine = ReportEngine(loaded_threats=['sha1-Hulud', 'custom-threat'])
+    engine = ReportEngine()
+    # Use set_threats() method instead of constructor parameter
+    engine.set_threats(['sha1-Hulud', 'custom-threat'])
     engine.add_findings([
         Finding(
             ecosystem='npm',

@@ -152,11 +152,6 @@ def filter_available_ecosystems(requested: List[str]) -> List[str]:
     help="Do not write JSON report to disk"
 )
 @click.option(
-    "--output-relative-paths",
-    is_flag=True,
-    help="Use relative paths in JSON output (useful for Docker)"
-)
-@click.option(
     "--list-ecosystems",
     is_flag=True,
     help="List supported ecosystems and exit"
@@ -178,7 +173,6 @@ def cli(
     ecosystems: Optional[str],
     output_file: str,
     no_save: bool,
-    output_relative_paths: bool,
     list_ecosystems: bool,
     list_affected_packages: bool,
     list_affected_packages_csv: bool
@@ -388,7 +382,7 @@ def cli(
     # Save report if requested
     if not no_save:
         absolute_output = os.path.abspath(output_file)
-        if report_engine.save_report(absolute_output, relative_paths=output_relative_paths):
+        if report_engine.save_report(absolute_output):
             click.echo(click.style(
                 f"✓ Report saved to: {absolute_output}",
                 fg='green', bold=True))
@@ -426,7 +420,6 @@ def cli(
     help="File to write JSON report",
 )
 @click.option("--no-save", is_flag=True, help="Do not write JSON report to disk")
-@click.option("--output-relative-paths", is_flag=True, help="Use relative paths in JSON output")
 @click.option("--list-affected-packages", is_flag=True, help="Display compromised packages and exit")
 @click.option("--list-affected-packages-csv", is_flag=True, help="Output threat database as CSV and exit")
 def npm_scan_cli(
@@ -434,7 +427,6 @@ def npm_scan_cli(
     csv_file: Optional[str],
     output_file: str,
     no_save: bool,
-    output_relative_paths: bool,
     list_affected_packages: bool,
     list_affected_packages_csv: bool
 ):
@@ -453,7 +445,6 @@ def npm_scan_cli(
         ecosystems='npm',  # Force npm ecosystem only
         output_file=output_file,
         no_save=no_save,
-        output_relative_paths=output_relative_paths,
         list_ecosystems=False,
         list_affected_packages=list_affected_packages,
         list_affected_packages_csv=list_affected_packages_csv

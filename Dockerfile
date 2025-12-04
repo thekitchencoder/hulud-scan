@@ -33,9 +33,13 @@ USER scanner
 # Set workspace as working directory (where commands run)
 WORKDIR /workspace
 
+# Set path prefix for cleaner output in Docker
+# "." = relative paths (./package.json)
+# Users can override with -e SCAN_PATH_PREFIX="$(pwd)" to get full host paths
+ENV SCAN_PATH_PREFIX="."
+
 # Set entrypoint to the multi-ecosystem scanner CLI
 ENTRYPOINT ["package-scan"]
 
-# Default: scan current directory (workspace), use relative paths
-# Threats auto-detected from /app/threats/ directory
-CMD ["--dir", ".", "--output-relative-paths"]
+# Default: no additional arguments needed (environment variable handles path formatting)
+CMD []
