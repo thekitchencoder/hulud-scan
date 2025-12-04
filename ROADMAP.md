@@ -1,101 +1,178 @@
-# ROADMAP for hulud-scan
+# ROADMAP for package-scan
 
-This document outlines the strategic direction for `hulud-scan`, evolving it from a single-purpose tool into a comprehensive software supply chain security solution. The recommendations are based on an analysis of the current state of supply chain attacks and are prioritized to deliver the most value to developers.
+This document outlines the strategic direction for `package-scan`, a rapid-response tool designed for defenders during active software supply chain attacks.
 
-## Current State and Vision
+## Vision and Purpose
 
-`hulud-scan` is currently a valuable tool for detecting a specific threat (the HULUD worm) in NPM projects. However, the software supply chain landscape is constantly evolving, with a dramatic increase in attacks targeting open-source ecosystems.
+`package-scan` is **NOT** a replacement for comprehensive vulnerability scanners like Snyk, npm audit, or Dependabot. Those tools excel at ongoing security monitoring and CVE detection.
 
-Our vision is to transform `hulud-scan` into a versatile, multi-ecosystem security tool that proactively identifies a wide range of threats, integrates seamlessly into developer workflows, and provides clear, actionable guidance.
+Instead, `package-scan` serves a specific, critical need: **rapid deployment during emerging supply chain attacks**. When a new attack is discovered (like the sha1-Hulud worm or the event-stream incident), defenders need to:
 
-## Actionable Task List
+1. **Quickly scan** their infrastructure against lists of known compromised packages
+2. **Deploy easily** across multiple projects and ecosystems
+3. **Respond immediately** without waiting for official CVE databases or scanner updates
+4. **Share intelligence** with their security team using simple CSV threat lists
 
-The following tasks are ordered by priority, with the goal of adding the most value to developers as quickly as possible.
+This tool prioritizes **speed, simplicity, and flexibility** over comprehensive analysis.
 
-### 1. Integrate with Public Vulnerability Databases
+## Completed Features ✅
 
-**Description:**
-The current reliance on a static CSV file for threat intelligence is a significant limitation. Integrating with public vulnerability databases will provide a much broader and more up-to-date source of information.
+### Multi-Ecosystem Support
+- ✅ **npm ecosystem**: package.json, package-lock.json, yarn.lock, pnpm-lock.yaml, node_modules
+- ✅ **Maven/Gradle**: pom.xml, build.gradle, build.gradle.kts, gradle.lockfile
+- ✅ **Python/pip**: requirements.txt, pyproject.toml, poetry.lock, Pipfile, Pipfile.lock, environment.yml
+- ✅ **Version range matching**: Intelligent matching for npm semver (^, ~), Maven ranges ([,)), PEP 440 (>=, ~=)
 
-**Tasks:**
-- [ ] Integrate with the [OSV (Open Source Vulnerability) database](https://osv.dev/) API to fetch vulnerability data for a given package and version.
-- [ ] Integrate with the [GitHub Advisory Database](https://github.com/advisories) to supplement the OSV data.
-- [ ] Integrate with the [NVD (National Vulnerability Database)](https://nvd.nist.gov/) for CVE information.
-- [ ] Modify the scanning logic to query these databases instead of relying on the CSV file.
-- [ ] Update the reporting to include links to the relevant vulnerability advisories.
+### Threat Database System
+- ✅ **CSV-based threats**: Simple format for rapid threat list creation
+- ✅ **Multi-threat support**: Scan for specific threats or all threats
+- ✅ **Custom databases**: Load any CSV file with compromised packages
 
-### 2. Multi-Ecosystem Support
+### Deployment & Integration
+- ✅ **Docker support**: Pre-built images for rapid deployment
+- ✅ **CLI tool**: Simple command-line interface
+- ✅ **JSON reporting**: Machine-readable output for automation
+- ✅ **Modular architecture**: Easy to extend with new ecosystems
 
-**Description:**
-To be a truly valuable tool, `hulud-scan` needs to support more than just NPM. Adding support for other popular package ecosystems will make it useful to a much wider audience.
+### Documentation
+- ✅ **Comprehensive docs**: Sphinx documentation with API reference
+- ✅ **Test coverage**: Unit tests for core components and adapters
+- ✅ **Usage examples**: Docker, CI/CD, and command-line examples
 
-**Tasks:**
-- [ ] Add support for **PyPI (Python)** by parsing `requirements.txt` and `pyproject.toml` files.
-- [ ] Add support for **Maven (Java)** by parsing `pom.xml` files.
-- [ ] Add support for **RubyGems (Ruby)** by parsing `Gemfile` files.
-- [ ] Abstract the scanning logic to be language-agnostic, with specific implementations for each package manager.
+## Priority 1: Core Ecosystem Expansion
 
-### 3. Improved Reporting and Remediation Guidance
+**Goal**: Support the most common package ecosystems to maximize usefulness during supply chain attacks.
 
-**Description:**
-The current report is a good start, but it could be more actionable. Providing clear, concise remediation guidance will help developers fix vulnerabilities more quickly.
+### Ruby/Gem Support
+- [ ] Parse `Gemfile` and `Gemfile.lock`
+- [ ] Support Bundler version specifications
+- [ ] Create RubyAdapter with version matching
+- [ ] Add test fixtures and documentation
 
-**Tasks:**
-- [ ] Enhance the console report with color-coding to highlight the severity of vulnerabilities.
-- [ ] Provide clear, step-by-step remediation instructions for each vulnerability, including the exact version to upgrade to.
-- [ ] Include links to relevant documentation and blog posts that explain the vulnerability in more detail.
-- [ ] Offer a "quiet" mode that only outputs machine-readable JSON for easier integration with other tools.
+### Rust/Cargo Support
+- [ ] Parse `Cargo.toml` and `Cargo.lock`
+- [ ] Support Cargo version requirements
+- [ ] Create CargoAdapter with version matching
+- [ ] Add test fixtures and documentation
 
-### 4. CI/CD Integration
+### Go Modules Support
+- [ ] Parse `go.mod` and `go.sum`
+- [ ] Support Go module versioning
+- [ ] Create GoAdapter with version matching
+- [ ] Add test fixtures and documentation
 
-**Description:**
-To be truly effective, security scanning needs to be an automated part of the development process. Making `hulud-scan` easy to integrate into CI/CD pipelines is crucial.
+### .NET/NuGet Support
+- [ ] Parse `.csproj`, `packages.config`, `packages.lock.json`
+- [ ] Support NuGet version ranges
+- [ ] Create NuGetAdapter with version matching
+- [ ] Add test fixtures and documentation
 
-**Tasks:**
-- [ ] Provide clear documentation and examples for integrating `hulud-scan` with popular CI/CD platforms like GitHub Actions, GitLab CI, and Jenkins.
-- [ ] Add a configuration option to fail the build if vulnerabilities of a certain severity are found.
-- [ ] Create a GitHub Action for `hulud-scan` to make it easy to add to any GitHub repository.
+## Priority 2: CI/CD Integration
 
-### 5. Typosquatting and Dependency Confusion Detection
+**Goal**: Enable teams to scan continuously during active attacks to ensure they remain uncompromised.
 
-**Description:**
-Proactively detecting potential threats is a key part of a modern security tool. Adding detection for typosquatting and dependency confusion attacks will help protect developers from these common attack vectors.
+### GitHub Actions Integration
+- [ ] Create official GitHub Action for package-scan
+- [ ] Support matrix builds for monorepos
+- [ ] Add examples for PR checks and scheduled scans
+- [ ] Document exit codes and failure modes
 
-**Tasks:**
-- [ ] Implement a Levenshtein distance algorithm to identify package names that are similar to popular packages.
-- [ ] Create a list of common typosquatting variations for popular packages.
-- [ ] For private packages, check if the same package name is available on public repositories.
-- [ ] Add a new section to the report for potential typosquatting and dependency confusion vulnerabilities.
+### GitLab CI Integration
+- [ ] Create GitLab CI template
+- [ ] Add examples for pipeline integration
+- [ ] Document artifacts and reports
 
-### 6. SBOM (Software Bill of Materials) Generation and Analysis
+### Jenkins Integration
+- [ ] Create Jenkins pipeline examples
+- [ ] Document integration patterns
+- [ ] Add examples for multi-branch scanning
 
-**Description:**
-An SBOM is a critical component of modern software supply chain security. Adding the ability to generate and analyze SBOMs will make `hulud-scan` a more comprehensive tool.
+### General CI/CD Features
+- [ ] Add `--fail-on-findings` flag to exit with error code
+- [ ] Add `--quiet` mode for minimal output
+- [ ] Improve JSON output for CI/CD consumption
+- [ ] Add badge/status generation
 
-**Tasks:**
-- [ ] Add a new command to generate an SBOM for a project in the CycloneDX or SPDX format.
-- [ ] Add the ability to scan an existing SBOM for vulnerabilities.
-- [ ] Integrate the SBOM analysis into the main scanning logic.
+## Priority 3: Enhanced Threat Database Features
 
-### 7. Package Metadata Analysis
+**Goal**: Make it easier for security teams to create, share, and use threat databases.
 
-**Description:**
-Analyzing package metadata can reveal suspicious signs that may indicate a malicious package.
+### Threat Database Enhancements
+- [ ] Add severity/risk levels to CSV format (critical, high, medium, low)
+- [ ] Support metadata fields (CVE IDs, advisory URLs, notes)
+- [ ] Add threat database validation tool
+- [ ] Create threat database templates for common attack patterns
 
-**Tasks:**
-- [ ] Add checks for suspicious metadata, such as:
-    - New packages with no history or few downloads.
-    - Packages with suspiciously high version numbers.
-    - Packages with maintainers who have no history or are associated with other malicious packages.
-    - Packages with install scripts that execute arbitrary code.
-- [ ] Add a new section to the report for suspicious packages.
+### Documentation & Examples
+- [ ] Create guide for building threat CSVs from security advisories
+- [ ] Add examples of scraping vendor security pages
+- [ ] Document best practices for threat database organization
+- [ ] Provide templates for incident response teams
 
-### 8. Static and Dynamic Code Analysis
+## Priority 4: Output Format Flexibility
 
-**Description:**
-This is the most advanced feature on the roadmap, but it provides the deepest level of protection. Incorporating static and dynamic code analysis will allow `hulud-scan` to identify malicious code within dependencies, even if the package is not yet known to be malicious.
+**Goal**: Make it easy to integrate package-scan output into various tools and workflows.
 
-**Tasks:**
-- [ ] Integrate with a static analysis engine like `bandit` (for Python) or `eslint` (for JavaScript) to identify potentially malicious code patterns.
-- [ ] Explore the use of dynamic analysis (sandboxing) to execute package install scripts and tests in a safe environment to observe their behavior.
-- [ ] Add a new section to the report for vulnerabilities found through code analysis.
+### JSON Transformation Scripts
+- [ ] Provide example script: JSON → SARIF (for GitHub Code Scanning)
+- [ ] Provide example script: JSON → HTML report
+- [ ] Provide example script: JSON → CSV summary
+- [ ] Provide example script: JSON → Slack/Teams notification
+- [ ] Document JSON schema for custom transformations
+
+### Enhanced Reporting
+- [ ] Add `--format` flag (json, sarif, html, csv)
+- [ ] Support severity-based filtering in output
+- [ ] Add summary statistics to console output
+- [ ] Improve remediation suggestions
+
+## Future/Community-Driven Features
+
+**Goal**: Features that would benefit the community but require collaboration or sustained effort.
+
+### Centralized Threat Database (Community)
+- [ ] Design API for centralized threat database
+- [ ] Create community-maintained threat repository
+- [ ] Add `--update-threats` command to pull latest threats
+- [ ] Implement caching and offline mode
+- [ ] **Requires**: Community hosting, moderation, and maintenance
+
+### Automated Threat Detection (AI/Research)
+- [ ] Explore AI/ML for identifying compromised packages from vendor feeds
+- [ ] Create scrapers for major security vendor advisories
+- [ ] Automate CSV generation from identified attacks
+- [ ] Build confidence scoring system
+- [ ] **Requires**: Research, compute resources, and community validation
+
+### Package Registry Integration (Optional)
+- [ ] Add support for private registries (npm, Maven, PyPI, etc.)
+- [ ] Support authentication for private packages
+- [ ] Add registry-specific metadata checking
+- [ ] **Requires**: Careful design to avoid scope creep
+
+## Explicitly Out of Scope
+
+These features are better handled by existing comprehensive security tools:
+
+❌ **General CVE/vulnerability database integration** (Use: npm audit, Snyk, Dependabot)
+❌ **SBOM generation and analysis** (Use: Syft, CycloneDX tools)
+❌ **Static/dynamic code analysis** (Use: Semgrep, CodeQL)
+❌ **Typosquatting detection** (Use: Package registry scanners)
+❌ **Package metadata risk analysis** (Use: Socket.dev, Phylum)
+❌ **License compliance checking** (Use: FOSSA, Licensee)
+
+`package-scan` is a focused tool for a specific purpose. For comprehensive supply chain security, use it alongside other specialized tools.
+
+## Contributing
+
+We welcome contributions, especially:
+- **New ecosystem adapters**: Add support for additional package managers
+- **Threat databases**: Share threat CSVs from real-world attacks
+- **CI/CD templates**: Examples for additional platforms
+- **Output format scripts**: JSON transformation examples
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+## Questions or Suggestions?
+
+Open an issue on GitHub to discuss roadmap priorities or suggest new features that align with the rapid-response mission.

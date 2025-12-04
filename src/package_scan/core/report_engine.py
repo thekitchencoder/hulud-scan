@@ -25,9 +25,12 @@ class ReportEngine:
         Initialize report engine
 
         Args:
-            scan_dir: Root directory that was scanned (for relative path conversion)
+            scan_dir: Root directory that was scanned (for path conversion)
         """
         self.scan_dir = Path(scan_dir) if scan_dir else None
+        # Get path prefix from environment variable (for Docker/CI friendliness)
+        # If set to ".", use relative paths; if set to absolute path, replace /workspace with that path
+        self.path_prefix = os.environ.get('SCAN_PATH_PREFIX', None)
         self.findings: List[Finding] = []
         self.threats: List[str] = []  # Track which threats were scanned
 
@@ -55,6 +58,62 @@ class ReportEngine:
     def get_ecosystems(self) -> List[str]:
         """Get list of ecosystems with findings"""
         return sorted(set(f.ecosystem for f in self.findings))
+
+    def _format_path(self, path: str) -> str:
+        """
+        Format a file path for display using SCAN_PATH_PREFIX environment variable
+
+        If SCAN_PATH_PREFIX is set:
+        - "." -> convert to relative paths (./package.json)
+        - absolute path -> replace scan_dir with that path (/home/user/project/package.json)
+        - not set -> use absolute paths as-is
+
+        Args:
+            path: File path to format
+
+        Returns:
+            Formatted path based on SCAN_PATH_PREFIX setting
+        """
+        if not self.path_prefix or not self.scan_dir:
+            return path
+
+        try:
+            abs_path = Path(path)
+            scan_dir_abs = self.scan_dir.absolute()
+
+            # If path prefix is ".", use relative paths
+            if self.path_prefix == ".":
+                rel_path = abs_path.relative_to(scan_dir_abs)
+                return f"./{rel_path}"
+
+            # Otherwise, replace scan_dir with the provided prefix
+            rel_path = abs_path.relative_to(scan_dir_abs)
+            prefix_path = Path(self.path_prefix)
+            new_path = prefix_path / rel_path
+            return str(new_path)
+
+        except (ValueError, Exception):
+            # Path is outside scan directory or other error, return as-is
+            return path
+
+    def _generate_summary(self) -> dict:
+        """
+        Generate summary statistics for all ecosystems
+
+        Returns:
+            Dictionary mapping ecosystem names to summary stats
+        """
+        ecosystem_summary = {}
+        for ecosystem in self.get_ecosystems():
+            ecosystem_findings = [f for f in self.findings if f.ecosystem == ecosystem]
+            ecosystem_summary[ecosystem] = {
+                'total': len(ecosystem_findings),
+                'manifest': sum(1 for f in ecosystem_findings if f.finding_type == 'manifest'),
+                'lockfile': sum(1 for f in ecosystem_findings if f.finding_type == 'lockfile'),
+                'installed': sum(1 for f in ecosystem_findings if f.finding_type == 'installed'),
+                'unique_packages': len(set(f.package_name for f in ecosystem_findings))
+            }
+        return ecosystem_summary
 
     def print_report(self):
         """Print formatted console report"""
@@ -127,7 +186,7 @@ class ReportEngine:
 
     def _print_finding(self, finding: Finding):
         """Print a single finding"""
-        click.echo(f"\n  File: {finding.file_path}")
+        click.echo(f"\n  File: {self._format_path(finding.file_path)}")
         click.echo(f"  Package: " + click.style(f"{finding.package_name}@{finding.version}", fg='red', bold=True))
 
         if finding.declared_spec:
@@ -143,17 +202,17 @@ class ReportEngine:
             if 'lockfile_type' in finding.metadata:
                 click.echo(f"  Lock File Type: {finding.metadata['lockfile_type']}")
             if 'location' in finding.metadata:
-                click.echo(f"  Location: {finding.metadata['location']}")
+                click.echo(f"  Location: {self._format_path(finding.metadata['location'])}")
             if 'package_path' in finding.metadata:
-                click.echo(f"  Path: {finding.metadata['package_path']}")
+                click.echo(f"  Path: {self._format_path(finding.metadata['package_path'])}")
 
         # Print remediation
         if finding.remediation:
             rem = finding.remediation
             click.echo(click.style("  Remediation:", fg='cyan'))
             click.echo(f"    - strategy: {rem.strategy}")
-            if rem.suggested_spec:
-                click.echo(f"    - suggested_spec: " + click.style(rem.suggested_spec, fg='green', bold=True))
+            if rem.suggested_version:
+                click.echo(f"    - suggested_spec: " + click.style(rem.suggested_version, fg='green', bold=True))
 
     def _print_summary(self):
         """Print overall summary"""
@@ -200,13 +259,14 @@ class ReportEngine:
 
         click.echo()  # Final newline
 
-    def save_report(self, output_file: str, relative_paths: bool = False) -> bool:
+    def save_report(self, output_file: str) -> bool:
         """
         Save findings to JSON file
 
+        Path conversion is handled automatically via SCAN_PATH_PREFIX environment variable.
+
         Args:
             output_file: Path to output file
-            relative_paths: Convert absolute paths to relative paths
 
         Returns:
             True if saved successfully, False otherwise
@@ -217,28 +277,16 @@ class ReportEngine:
             for finding in self.findings:
                 finding_dict = finding.to_dict(include_note=False)
 
-                # Convert paths to relative if requested
-                if relative_paths and self.scan_dir:
-                    scan_dir_abs = self.scan_dir.absolute()
-                    for path_field in ['file', 'location', 'package_path']:
-                        if path_field in finding_dict:
-                            abs_path = Path(finding_dict[path_field])
-                            try:
-                                rel_path = abs_path.relative_to(scan_dir_abs)
-                                # Add ./ prefix for clarity
-                                finding_dict[path_field] = f"./{rel_path}"
-                            except ValueError:
-                                # Path is outside scan directory, keep absolute
-                                pass
+                # Convert paths using the same logic as console output
+                for path_field in ['file_path', 'location', 'package_path']:
+                    if path_field in finding_dict:
+                        finding_dict[path_field] = self._format_path(finding_dict[path_field])
 
-                        # Also check metadata
-                        if path_field in finding_dict.get('metadata', {}):
-                            abs_path = Path(finding_dict['metadata'][path_field])
-                            try:
-                                rel_path = abs_path.relative_to(scan_dir_abs)
-                                finding_dict['metadata'][path_field] = f"./{rel_path}"
-                            except ValueError:
-                                pass
+                    # Also check metadata
+                    if path_field in finding_dict.get('metadata', {}):
+                        finding_dict['metadata'][path_field] = self._format_path(
+                            finding_dict['metadata'][path_field]
+                        )
 
                 findings_data.append(finding_dict)
 
@@ -250,19 +298,8 @@ class ReportEngine:
                 'findings': findings_data
             }
 
-            # Group by ecosystem for easier navigation
-            ecosystem_summary = {}
-            for ecosystem in self.get_ecosystems():
-                ecosystem_findings = [f for f in self.findings if f.ecosystem == ecosystem]
-                ecosystem_summary[ecosystem] = {
-                    'total': len(ecosystem_findings),
-                    'manifest': sum(1 for f in ecosystem_findings if f.finding_type == 'manifest'),
-                    'lockfile': sum(1 for f in ecosystem_findings if f.finding_type == 'lockfile'),
-                    'installed': sum(1 for f in ecosystem_findings if f.finding_type == 'installed'),
-                    'unique_packages': len(set(f.package_name for f in ecosystem_findings))
-                }
-
-            report['summary'] = ecosystem_summary
+            # Add ecosystem summary
+            report['summary'] = self._generate_summary()
 
             # Write to file
             with open(output_file, 'w', encoding='utf-8') as f:

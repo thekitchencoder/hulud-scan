@@ -6,12 +6,12 @@
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-project = 'hulud-scan'
-copyright = '2025, Hulud Security'
-author = 'Hulud Security'
+project = 'package-scan'
+copyright = '2025, Package Scan Security'
+author = 'Package Scan Security'
 
-version = '0.1.0'
-release = '0.1.0'
+version = '0.3.1'
+release = '0.3.1'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
