@@ -1,5 +1,11 @@
 # package-scan
 
+[![Documentation Status](https://github.com/thekitchencoder/package-scan/actions/workflows/BuildAndDeployDocs.yml/badge.svg)](https://github.com/thekitchencoder/package-scan/actions/workflows/BuildAndDeployDocs.yml)
+[![Docker Build](https://github.com/thekitchencoder/package-scan/actions/workflows/DockerImageReleaseWorkflow.yml/badge.svg)](https://github.com/thekitchencoder/package-scan/actions/workflows/DockerImageReleaseWorkflow.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![Docker Pulls](https://img.shields.io/docker/pulls/kitchencoder/package-scan)](https://hub.docker.com/r/kitchencoder/package-scan)
+
 **Rapid-response supply chain attack scanner** for detecting compromised packages during active security incidents.
 
 📚 **[Full Documentation](https://thekitchencoder.github.io/package-scan/)** | 🐙 **[GitHub](https://github.com/thekitchencoder/package-scan)**
