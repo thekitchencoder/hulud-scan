@@ -12,14 +12,16 @@ RUN groupadd -r scanner && useradd -r -g scanner scanner
 # Set up application directory
 WORKDIR /app
 
-# Install dependencies in a separate layer for caching
+# Copy application code first (needed for editable install)
 COPY pyproject.toml setup.py ./
+COPY src/ ./src/
+
+# Install dependencies
 RUN pip install --no-cache-dir -e . && \
     pip install --no-cache-dir pyyaml toml && \
     pip cache purge
 
-# Copy application code and default CSV file
-COPY src/ ./src/
+# Copy threat database
 COPY sha1-Hulud.csv ./
 
 # Create workspace directory for user files
