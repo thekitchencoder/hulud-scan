@@ -46,3 +46,45 @@ jobs:
           file: ./coverage.xml
           flags: unittests
           name: codecov-umbrella
+
+  docker-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        run: |
+          docker build -t package-scan:test .
+
+      - name: Test Docker image - Help command
+        run: |
+          docker run --rm package-scan:test --help
+
+      - name: Test Docker image - List ecosystems
+        run: |
+          docker run --rm package-scan:test --list-ecosystems
+
+      - name: Test Docker image - List affected packages
+        run: |
+          docker run --rm package-scan:test --list-affected-packages
+
+      - name: Test Docker image - Scan examples directory
+        run: |
+          docker run --rm -v "$PWD/examples:/workspace" package-scan:test --dir /workspace --no-save
+
+      - name: Test Docker image - Scan for specific threat
+        run: |
+          docker run --rm -v "$PWD/examples:/workspace" package-scan:test --dir /workspace --threat sample-threats --no-save
+
+      - name: Test Docker image - Scan specific ecosystem
+        run: |
+          docker run --rm -v "$PWD/examples:/workspace" package-scan:test --dir /workspace --ecosystem npm --no-save
+
+      - name: Verify Docker image security (non-root user)
+        run: |
+          docker run --rm package-scan:test whoami | grep -q scanner || exit 1
