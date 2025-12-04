@@ -54,6 +54,57 @@ package-scan is a Python CLI tool for detecting compromised packages across mult
    package-scan --list-ecosystems
    ```
 
+## Version Management
+
+The project uses a **single source of truth** approach for version management:
+
+**Source of Truth:** `pyproject.toml` (project.version)
+
+**Auto-synced files** (read from package metadata at runtime):
+- `src/package_scan/__init__.py` - Uses `importlib.metadata.version()`
+- `docs/source/conf.py` - Uses `importlib.metadata.version()`
+
+**Manually synced files** (updated by script):
+- `Dockerfile` - LABEL version
+- `scripts/tag-and-push.sh` - VERSION variable
+
+### Releasing a New Version
+
+1. **Update version in pyproject.toml:**
+   ```bash
+   # Edit pyproject.toml, change version = "0.3.1" to your new version
+   vim pyproject.toml
+   ```
+
+2. **Sync version to Docker files:**
+   ```bash
+   ./scripts/sync-version.sh
+   ```
+
+3. **Review changes:**
+   ```bash
+   git diff
+   ```
+
+4. **Commit and tag:**
+   ```bash
+   git add -A
+   git commit -m "chore: bump version to X.Y.Z"
+   git tag vX.Y.Z
+   git push && git push --tags
+   ```
+
+5. **Build and push Docker image:**
+   ```bash
+   ./scripts/tag-and-push.sh
+   ```
+
+The `sync-version.sh` script automatically updates:
+- `Dockerfile` LABEL version
+- `scripts/tag-and-push.sh` VERSION variable
+
+All Python code reads the version dynamically from package metadata, so no manual updates are needed there.
+
 ## Running the Tool
 
 ### Multi-Ecosystem Scanning
