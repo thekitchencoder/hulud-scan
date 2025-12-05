@@ -35,11 +35,10 @@ WORKDIR /workspace
 
 # Set path prefix for cleaner output in Docker
 # "." = relative paths (./package.json)
-# Users can override with -e SCAN_PATH_PREFIX="$(pwd)" to get full host paths
+# Override with -e SCAN_PATH_PREFIX="$(pwd)" to get full host paths
 ENV SCAN_PATH_PREFIX="."
 
 # Set entrypoint to the multi-ecosystem scanner CLI
 ENTRYPOINT ["package-scan"]
 
-# Default: no additional arguments needed (environment variable handles path formatting)
 CMD []

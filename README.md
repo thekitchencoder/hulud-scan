@@ -158,9 +158,6 @@ package-scan --output scan-results.json
 
 # No JSON file (console only)
 package-scan --no-save
-
-# Relative paths in output
-package-scan --output-relative-paths
 ```
 
 ### Docker Examples
@@ -170,6 +167,12 @@ package-scan --output-relative-paths
 docker run --rm \
   -v "$(pwd):/workspace" \
   -v "/path/to/custom.csv:/app/custom.csv" \
+  kitchencoder/package-scan:latest --csv /app/custom.csv
+  
+# Host file paths in the report
+docker run --rm \
+  -v "$(pwd):/workspace" \
+  -e  SCAN_PATH_PREFIX="$(pwd)" \
   kitchencoder/package-scan:latest --csv /app/custom.csv
 
 # CI/CD: Exit with error if threats found
@@ -187,7 +190,6 @@ docker run --rm -v "$(pwd):/workspace" kitchencoder/package-scan:latest --dir /w
 - `--ecosystem LIST`: Comma-separated list of ecosystems to scan
 - `--output FILE`: JSON report filename (default: `package_scan_report.json`)
 - `--no-save`: Don't write JSON report
-- `--output-relative-paths`: Use relative paths in JSON output
 - `--list-ecosystems`: List supported ecosystems and exit
 - `--list-affected-packages`: Display compromised packages and exit
 - `--list-affected-packages-csv`: Output threat database as CSV
