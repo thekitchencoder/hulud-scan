@@ -85,12 +85,6 @@ Disable JSON Report
 
     package-scan --no-save
 
-Relative Paths in Output
-~~~~~~~~~~~~~~~~~~~~~~~~~
-
-::
-
-    package-scan --output-relative-paths
 
 Listing Compromised Packages
 -----------------------------

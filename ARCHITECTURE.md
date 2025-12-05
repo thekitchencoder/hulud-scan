@@ -258,8 +258,15 @@ RUN pip install --no-cache-dir \
 COPY src/ /app/src/
 COPY sha1-Hulud.csv /app/
 
-# Default: scan all ecosystems
-CMD ["--dir", ".", "--output-relative-paths"]
+# Set path prefix for cleaner output in Docker
+# "." = relative paths (./package.json)
+# Override with -e SCAN_PATH_PREFIX="$(pwd)" to get full host paths
+ENV SCAN_PATH_PREFIX="."
+
+# Set entrypoint to the multi-ecosystem scanner CLI
+ENTRYPOINT ["package-scan"]
+
+CMD []
 ```
 
 ### Volume Mounts
