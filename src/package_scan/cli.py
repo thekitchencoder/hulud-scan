@@ -400,6 +400,37 @@ def threat_db_cli():
     pass
 
 
+@threat_db_cli.command(name="info", help="Display metadata from threat CSV file")
+@click.option(
+    "--file",
+    "file_path",
+    type=click.Path(exists=True, file_okay=True, dir_okay=False, path_type=str),
+    required=True,
+    help="Path to threat CSV file"
+)
+def info_threat_db(file_path: str):
+    """
+    Display metadata from threat CSV file
+
+    Shows metadata fields from comment lines at the start of the file.
+    Format: # Field: Value
+
+    Recommended fields:
+    - Description: Brief description of the threat
+    - Source: URL or reference to threat intelligence source
+    - Last updated: ISO 8601 timestamp
+
+    Examples:
+        threat-db info --file threats/CVE-2025-55182.csv
+        threat-db info --file threats/sha1-Hulud.csv
+    """
+    from package_scan.core import parse_threat_metadata
+    from pathlib import Path
+
+    metadata = parse_threat_metadata(Path(file_path))
+    metadata.print_metadata()
+
+
 @threat_db_cli.command(name="validate", help="Validate threat CSV file format")
 @click.option(
     "--file",

@@ -205,22 +205,55 @@ docker run --rm -v "$(pwd):/workspace" kitchencoder/package-scan:latest --dir /w
 
 ## Threat CSV Format
 
-Threat databases use a simple CSV format with three columns:
+Threat databases use a simple CSV format with three columns and optional metadata:
 
 ```csv
+# Description: Unauthenticated remote code execution vulnerability in React
+# Source: https://react.dev/blog/2025/12/03/critical-security-vulnerability
+# Last updated: 2025-12-06 00:51:00 UTC
 ecosystem,name,version
-npm,left-pad,1.3.0
-npm,@scope/package,2.0.0
-maven,org.springframework:spring-core,5.3.0
-maven,org.apache.logging.log4j:log4j-core,2.14.1
-pip,requests,2.8.1
-pip,django,3.0.0
+npm,react-server-dom-webpack,19.0
+npm,react-server-dom-webpack,19.1.0
+npm,react-server-dom-parcel,19.0
 ```
+
+### CSV Structure
+
+**Required columns:**
+- `ecosystem`: Package ecosystem (npm, maven, pip, gem)
+- `name`: Package identifier
+- `version`: Specific version number
+
+**Optional metadata** (comment lines starting with `#`):
+- `Description`: Brief description of the threat
+- `Source`: URL or reference to threat intelligence
+- `Last updated`: ISO 8601 timestamp (YYYY-MM-DD HH:MM:SS UTC)
+- `Severity`: critical|high|medium|low (optional)
+- `CVE`: CVE identifier (optional)
+- Any custom fields you want to track
 
 **Package naming conventions:**
 - **npm**: Package name as-is (supports `@scope/package`)
 - **maven**: `groupId:artifactId` format
 - **pip**: Lowercase package name (PyPI convention)
+
+### Viewing Threat Metadata
+
+Display metadata from a threat file:
+
+```bash
+threat-db info --file threats/CVE-2025-55182.csv
+```
+
+Example output:
+```
+📋 THREAT METADATA
+File: threats/CVE-2025-55182.csv
+
+Description: Unauthenticated remote code execution vulnerability
+Source: https://react.dev/blog/2025/12/03/...
+Last updated: 2025-12-06 00:51:00 UTC
+```
 
 ### Validating Threat Files
 
@@ -237,6 +270,7 @@ The validator checks for:
 - ✓ Proper package name format (e.g., Maven's `groupId:artifactId`)
 - ✓ Valid version strings
 - ✓ Duplicate entries
+- ✓ Recommended metadata fields (Description, Source, Last updated)
 
 **Validation modes:**
 - **Normal mode** (default): Warns about unknown ecosystems but passes validation
