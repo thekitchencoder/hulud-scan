@@ -370,43 +370,58 @@ def info_threat_db(file_path: str, threat_names: tuple, summary: bool, packages:
     """
     Display threat database information
 
-    By default, shows metadata and statistics for threats.
+    By default, shows both metadata/statistics and packages.
     Can filter by specific threat or file, and output in different formats.
 
     Examples:
-        threat-db info --file threats/CVE-2025-55182.csv
-        threat-db info --threat sha1-Hulud
-        threat-db info --threat sha1-Hulud --packages
-        threat-db info --packages --csv
-        threat-db info --threat sha1-Hulud --summary --csv
+        threat-db info                                  # Show summary + packages for all threats
+        threat-db info --file threats/CVE-2025-55182.csv # Show summary + packages for file
+        threat-db info --threat sha1-Hulud              # Show summary + packages for threat
+        threat-db info --summary                        # Show only summary
+        threat-db info --packages                       # Show only packages
+        threat-db info --packages --csv                 # Export packages as CSV
+        threat-db info --csv                            # Export both (metadata as # comments)
     """
     from package_scan.core import parse_threat_metadata, ThreatDatabase
     from pathlib import Path
 
-    # Determine default behavior: if no mode specified, default to summary
-    if not summary and not packages:
-        summary = True
+    # Determine what to show: default is BOTH summary and packages
+    show_summary = summary or (not summary and not packages)
+    show_packages = packages or (not summary and not packages)
 
     # Handle file-based query (single file)
     if file_path:
-        metadata = parse_threat_metadata(Path(file_path))
-        metadata.compute_stats()
+        if csv_output:
+            # CSV output: metadata as # comments, then raw CSV
+            if show_summary:
+                metadata = parse_threat_metadata(Path(file_path))
+                if metadata.metadata:
+                    for key, value in metadata.metadata.items():
+                        click.echo(f"# {key}: {value}")
+                if show_packages:
+                    click.echo("#")  # Blank comment line separator
 
-        if summary and not csv_output:
-            # Show formatted metadata + statistics
-            metadata.print_metadata()
-        elif summary and csv_output:
-            # Dump raw metadata as key: value
-            for key, value in metadata.metadata.items():
-                click.echo(f"{key}: {value}")
-        elif packages and csv_output:
-            # Dump CSV without comments
-            from package_scan.core.threat_metadata import get_csv_reader_without_comments
-            csv_content = get_csv_reader_without_comments(Path(file_path))
-            click.echo(csv_content.read())
-        elif packages and not csv_output:
-            # Show packages from this file
-            _print_packages_from_file(Path(file_path))
+            if show_packages:
+                # Output raw CSV (with headers)
+                with open(Path(file_path), 'r', encoding='utf-8-sig') as f:
+                    for line in f:
+                        stripped = line.strip()
+                        # Skip comment lines (they're already output above if needed)
+                        if not stripped or stripped.startswith('#'):
+                            continue
+                        click.echo(line.rstrip())
+        else:
+            # Formatted output
+            metadata = parse_threat_metadata(Path(file_path))
+            metadata.compute_stats()
+
+            if show_summary:
+                metadata.print_metadata()
+
+            if show_packages:
+                if show_summary:
+                    click.echo()  # Blank line separator
+                _print_packages_from_file(Path(file_path))
         return
 
     # Handle threat database query (all threats or filtered)
@@ -417,40 +432,40 @@ def info_threat_db(file_path: str, threat_names: tuple, summary: bool, packages:
     if not threat_db.load_threats(threat_names=threat_list):
         sys.exit(1)
 
-    # Output based on mode and format
-    if packages and csv_output:
-        # Raw CSV dump
-        click.echo("ecosystem,name,version")
-        for ecosystem in sorted(threat_db.get_ecosystems()):
-            packages_dict = threat_db.get_all_packages(ecosystem)
-            for pkg_name in sorted(packages_dict.keys()):
-                for version in sorted(packages_dict[pkg_name]):
-                    click.echo(f"{ecosystem},{pkg_name},{version}")
+    if csv_output:
+        # CSV output: metadata as # comments, then raw CSV data
+        if show_summary:
+            for threat_name in threat_db.get_loaded_threats():
+                threat_file = threats_dir / f"{threat_name}.csv"
+                if threat_file.exists():
+                    metadata = parse_threat_metadata(threat_file)
+                    click.echo(f"# Threat: {threat_name}")
+                    if metadata.metadata:
+                        for key, value in metadata.metadata.items():
+                            click.echo(f"# {key}: {value}")
+                    click.echo("#")  # Blank comment line
 
-    elif packages and not csv_output:
-        # Formatted package list
-        _print_packages_formatted(threat_db)
+        if show_packages:
+            # Output CSV data
+            click.echo("ecosystem,name,version")
+            for ecosystem in sorted(threat_db.get_ecosystems()):
+                packages_dict = threat_db.get_all_packages(ecosystem)
+                for pkg_name in sorted(packages_dict.keys()):
+                    for version in sorted(packages_dict[pkg_name]):
+                        click.echo(f"{ecosystem},{pkg_name},{version}")
+    else:
+        # Formatted output
+        if show_summary:
+            for threat_name in threat_db.get_loaded_threats():
+                threat_file = threats_dir / f"{threat_name}.csv"
+                if threat_file.exists():
+                    metadata = parse_threat_metadata(threat_file)
+                    metadata.compute_stats()
+                    metadata.print_metadata()
+                    click.echo()
 
-    elif summary and csv_output:
-        # Show metadata for each loaded threat in CSV-like format
-        for threat_name in threat_db.get_loaded_threats():
-            threat_file = threats_dir / f"{threat_name}.csv"
-            if threat_file.exists():
-                metadata = parse_threat_metadata(threat_file)
-                click.echo(f"# Threat: {threat_name}")
-                for key, value in metadata.metadata.items():
-                    click.echo(f"{key}: {value}")
-                click.echo()
-
-    elif summary and not csv_output:
-        # Show metadata + statistics for each loaded threat
-        for threat_name in threat_db.get_loaded_threats():
-            threat_file = threats_dir / f"{threat_name}.csv"
-            if threat_file.exists():
-                metadata = parse_threat_metadata(threat_file)
-                metadata.compute_stats()
-                metadata.print_metadata()
-                click.echo()
+        if show_packages:
+            _print_packages_formatted(threat_db)
 
 
 def _print_packages_from_file(file_path: Path):

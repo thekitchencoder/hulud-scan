@@ -176,17 +176,19 @@ package-scan --list-ecosystems
 
 **View threat database information:**
 ```bash
-threat-db info                                  # Summary of all threats (metadata + stats)
-threat-db info --threat sha1-Hulud              # Summary of specific threat
-threat-db info --file threats/custom.csv        # Summary of specific file
+threat-db info                                  # Summary + packages (all threats, default)
+threat-db info --threat sha1-Hulud              # Summary + packages for specific threat
+threat-db info --file threats/custom.csv        # Summary + packages for specific file
+threat-db info --summary                        # Summary only (metadata + stats)
+threat-db info --packages                       # Packages only (formatted display)
 ```
 
-**List compromised packages in database:**
+**Export threat database as CSV:**
 ```bash
-threat-db info --packages                       # Formatted display (all threats)
-threat-db info --threat sha1-Hulud --packages   # Specific threat packages
-threat-db info --packages --csv                 # Raw CSV output
-threat-db info --threat sha1-Hulud --packages --csv > hulud.csv  # Export specific threat
+threat-db info --csv > threats.csv              # Both metadata (# comments) + CSV data
+threat-db info --packages --csv                 # CSV data only (no metadata)
+threat-db info --summary --csv                  # Metadata only (as # comments)
+threat-db info --threat sha1-Hulud --packages --csv > hulud.csv  # Specific threat
 ```
 
 **Validate threat CSV files:**
@@ -792,12 +794,16 @@ done
 ### Security Team: Share Threat Intelligence
 
 ```bash
-# View threat database summary
+# View threat database (default shows summary + packages)
 threat-db info --threat sha1-Hulud              # Review specific threat details
 
-# Export threat database for sharing
-threat-db info --packages --csv > team-threat-db.csv
-threat-db info --threat sha1-Hulud --packages --csv > hulud-threat.csv
+# Export threat database for sharing (with metadata as # comments)
+threat-db info --csv > team-threat-db.csv
+threat-db info --threat sha1-Hulud --csv > hulud-complete.csv
+
+# Export just the CSV data (no metadata comments)
+threat-db info --packages --csv > team-data.csv
+threat-db info --threat sha1-Hulud --packages --csv > hulud-data.csv
 
 # Team members use shared database
 package-scan --csv team-threat-db.csv --dir ~/projects
