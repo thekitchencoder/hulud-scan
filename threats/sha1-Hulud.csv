@@ -1,3 +1,6 @@
+# Description: Packages known to be affected by SHA1-Hulud "The Second Coming" worm.
+# Source: https://www.koi.ai/incident/live-updates-sha1-hulud-the-second-coming-hundred-npm-packages-compromised
+# Last updated: 2025-12-04 12:00:00 UTC
 ecosystem,name,version
 npm,02-echo,0.0.7
 npm,@accordproject/concerto-analysis,3.24.1
