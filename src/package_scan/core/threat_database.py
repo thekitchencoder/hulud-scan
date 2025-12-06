@@ -7,6 +7,8 @@ from typing import Dict, Set, Optional, List
 
 import click
 
+from .threat_metadata import get_csv_reader_without_comments
+
 
 class ThreatDatabase:
     """
@@ -99,24 +101,25 @@ class ThreatDatabase:
             return False
 
         try:
-            with open(csv_path, 'r', encoding='utf-8') as f:
-                reader = csv.DictReader(f)
-                headers = reader.fieldnames
+            # Use comment-filtered reader to skip # lines
+            csv_content = get_csv_reader_without_comments(csv_path)
+            reader = csv.DictReader(csv_content)
+            headers = reader.fieldnames
 
-                if not headers:
-                    click.echo(click.style(f"✗ Error: CSV file has no headers: {csv_path}", fg='red', bold=True), err=True)
-                    return False
+            if not headers:
+                click.echo(click.style(f"✗ Error: CSV file has no headers: {csv_path}", fg='red', bold=True), err=True)
+                return False
 
-                # Check for required headers
-                if not ('ecosystem' in headers and 'name' in headers and 'version' in headers):
-                    click.echo(click.style(
-                        f"✗ Error: Invalid CSV format in {csv_path}. "
-                        f"Expected headers: 'ecosystem,name,version'. "
-                        f"Got: {','.join(headers)}",
-                        fg='red', bold=True), err=True)
-                    return False
+            # Check for required headers
+            if not ('ecosystem' in headers and 'name' in headers and 'version' in headers):
+                click.echo(click.style(
+                    f"✗ Error: Invalid CSV format in {csv_path}. "
+                    f"Expected headers: 'ecosystem,name,version'. "
+                    f"Got: {','.join(headers)}",
+                    fg='red', bold=True), err=True)
+                return False
 
-                self._load_multi_ecosystem_format(reader)
+            self._load_multi_ecosystem_format(reader)
 
             self.loaded_threats.append(threat_name)
             return True

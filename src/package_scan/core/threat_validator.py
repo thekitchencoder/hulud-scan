@@ -13,6 +13,8 @@ from typing import List, Set, Tuple, Optional
 
 import click
 
+from .threat_metadata import get_csv_reader_without_comments, parse_threat_metadata
+
 
 # Known ecosystems (expandable as new adapters are added)
 KNOWN_ECOSYSTEMS = {'npm', 'maven', 'pip', 'gem'}
@@ -127,41 +129,42 @@ class ThreatValidator:
             result.add_error(0, f"Not a file: {file_path}")
             return result
 
+        # Check for metadata and warn if missing recommended fields
+        metadata = parse_threat_metadata(file_path)
+        missing_fields = metadata.get_missing_recommended_fields()
+        if missing_fields:
+            result.add_warning(
+                0,
+                f"Missing recommended metadata fields: {', '.join(missing_fields)}. "
+                f"Consider adding: # {missing_fields[0].title()}: <value>"
+            )
+
         # Try to read and validate CSV
         # Use utf-8-sig to automatically handle UTF-8 BOM if present
         try:
-            with open(file_path, 'r', encoding='utf-8-sig', newline='') as f:
-                # Check if file is empty
-                content = f.read()
-                if not content.strip():
-                    result.add_error(0, "File is empty")
-                    return result
+            # Use comment-filtered reader to skip # lines
+            csv_content = get_csv_reader_without_comments(file_path)
+            reader = csv.DictReader(csv_content)
+            headers = reader.fieldnames
 
-                # Reset file pointer
-                f.seek(0)
+            if not headers:
+                result.add_error(1, "No headers found in CSV file")
+                return result
 
-                # Read CSV
-                reader = csv.DictReader(f)
-                headers = reader.fieldnames
+            # Detect format
+            format_type = self._detect_format(set(headers))
+            result.format_type = format_type
 
-                if not headers:
-                    result.add_error(1, "No headers found in CSV file")
-                    return result
+            if format_type == 'invalid':
+                result.add_error(
+                    1,
+                    f"Invalid CSV headers. Expected 'ecosystem,name,version'. "
+                    f"Got: {','.join(headers)}"
+                )
+                return result
 
-                # Detect format
-                format_type = self._detect_format(set(headers))
-                result.format_type = format_type
-
-                if format_type == 'invalid':
-                    result.add_error(
-                        1,
-                        f"Invalid CSV headers. Expected 'ecosystem,name,version'. "
-                        f"Got: {','.join(headers)}"
-                    )
-                    return result
-
-                # Validate rows
-                self._validate_rows(reader, result)
+            # Validate rows
+            self._validate_rows(reader, result)
 
         except UnicodeDecodeError as e:
             result.add_error(0, f"File encoding error: {e}")

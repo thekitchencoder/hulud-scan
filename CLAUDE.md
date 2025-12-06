@@ -384,14 +384,31 @@ threats/
 
 ### CSV Format
 
-**Current format (multi-ecosystem):**
+**Format with optional metadata:**
 ```csv
+# Description: Brief description of the threat
+# Source: URL or reference to threat intelligence source
+# Last updated: 2025-12-06 00:51:00 UTC
+# Severity: high (optional)
+# CVE: CVE-2025-12345 (optional)
 ecosystem,name,version
 npm,left-pad,1.3.0
 npm,@accordproject/concerto-linter,3.24.1
 maven,org.apache.logging.log4j:log4j-core,2.14.1
-maven,org.mvnpm:posthog-node,4.18.1
 pip,requests,2.8.1
+```
+
+**Metadata fields** (optional, comment lines starting with `#`):
+- **Description**: Brief description of the threat (recommended)
+- **Source**: URL or reference to threat intelligence source (recommended)
+- **Last updated**: ISO 8601 timestamp YYYY-MM-DD HH:MM:SS UTC (recommended)
+- **Severity**: critical|high|medium|low (optional)
+- **CVE**: CVE identifier (optional)
+- Any custom fields using `# Field: Value` format
+
+**View metadata:**
+```bash
+threat-db info --file threats/sha1-Hulud.csv
 ```
 
 ### Package Naming Conventions
