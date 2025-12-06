@@ -140,11 +140,17 @@ package-scan --ecosystem maven,pip  # Multiple ecosystems
 # List available ecosystems
 package-scan --list-ecosystems
 
+# View threat database information
+threat-db info                                  # Summary of all threats
+threat-db info --threat sha1-Hulud              # Summary of specific threat
+
 # List all compromised packages in database
-package-scan --list-affected-packages
+threat-db info --packages                       # Formatted display
+threat-db info --threat sha1-Hulud --packages   # Specific threat packages
 
 # Export threat database as CSV
-package-scan --list-affected-packages-csv > my-threats.csv
+threat-db info --packages --csv > my-threats.csv
+threat-db info --threat sha1-Hulud --packages --csv > hulud.csv
 
 # Use custom threat CSV
 package-scan --csv /path/to/custom-threats.csv
@@ -193,6 +199,7 @@ docker run --rm -v "$(pwd):/workspace" kitchencoder/package-scan:latest --dir /w
 
 ## CLI Options
 
+**package-scan** (main scanner):
 - `--dir PATH`: Directory to scan (default: current directory)
 - `--threat NAME`: Scan for specific threat (can be repeated)
 - `--csv FILE`: Use custom threat CSV file
@@ -200,8 +207,13 @@ docker run --rm -v "$(pwd):/workspace" kitchencoder/package-scan:latest --dir /w
 - `--output FILE`: JSON report filename (default: `package_scan_report.json`)
 - `--no-save`: Don't write JSON report
 - `--list-ecosystems`: List supported ecosystems and exit
-- `--list-affected-packages`: Display compromised packages and exit
-- `--list-affected-packages-csv`: Output threat database as CSV
+
+**threat-db info** (threat database queries):
+- `--file PATH`: Query specific threat CSV file
+- `--threat NAME`: Filter for specific threat(s)
+- `--summary`: Show metadata and statistics (default)
+- `--packages`: List all affected packages
+- `--csv`: Output in CSV format
 
 ## Threat CSV Format
 
