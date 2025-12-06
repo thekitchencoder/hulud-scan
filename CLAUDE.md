@@ -50,8 +50,8 @@ package-scan is a Python CLI tool for detecting compromised packages across mult
 
 3. Verify installation:
    ```bash
-   package-scan --help
-   package-scan --list-ecosystems
+   ptat --help
+   ptat scan --list-ecosystems
    ```
 
 ## Version Management
@@ -134,68 +134,68 @@ Auto-synced files (read from package metadata at runtime):
 
 **Basic scanning:**
 ```bash
-package-scan                                    # Scan current directory (all threats)
-package-scan --dir /path/to/project             # Scan specific directory
-package-scan --output custom_report.json        # Custom output file
-package-scan --no-save                          # Don't save JSON report
+ptat scan                                       # Scan current directory (all threats)
+ptat scan --dir /path/to/project                # Scan specific directory
+ptat scan --output custom_report.json           # Custom output file
+ptat scan --no-save                             # Don't save JSON report
 ```
 
 **Path formatting (via environment variable):**
 ```bash
 # Default: absolute paths
-package-scan --dir /path/to/project             # Shows: /path/to/project/package.json
+ptat scan --dir /path/to/project                # Shows: /path/to/project/package.json
 
 # Relative paths
 export SCAN_PATH_PREFIX="."
-package-scan --dir /path/to/project             # Shows: ./package.json
+ptat scan --dir /path/to/project                # Shows: ./package.json
 
 # Custom prefix (useful for reporting)
 export SCAN_PATH_PREFIX="/home/user/projects"
-package-scan --dir /path/to/project             # Shows: /home/user/projects/package.json
+ptat scan --dir /path/to/project                # Shows: /home/user/projects/package.json
 ```
 
 **Threat selection:**
 ```bash
-package-scan --threat sha1-Hulud                # Scan for specific threat
-package-scan --threat sha1-Hulud --threat other # Scan for multiple threats
-package-scan --csv /path/to/custom.csv          # Use custom threat CSV file
+ptat scan --threat sha1-Hulud                   # Scan for specific threat
+ptat scan --threat sha1-Hulud --threat other    # Scan for multiple threats
+ptat scan --csv /path/to/custom.csv             # Use custom threat CSV file
 ```
 
 **Scan specific ecosystem:**
 ```bash
-package-scan --ecosystem npm                    # npm only
-package-scan --ecosystem maven                  # Maven/Gradle only
-package-scan --ecosystem pip                    # Python only
-package-scan --ecosystem npm,maven,pip          # Multiple ecosystems
+ptat scan --ecosystem npm                       # npm only
+ptat scan --ecosystem maven                     # Maven/Gradle only
+ptat scan --ecosystem pip                       # Python only
+ptat scan --ecosystem npm,maven,pip             # Multiple ecosystems
 ```
 
 **List supported ecosystems:**
 ```bash
-package-scan --list-ecosystems
+ptat scan --list-ecosystems
 ```
 
 **View threat database information:**
 ```bash
-threat-db info                                  # Summary + packages (all threats, default)
-threat-db info --threat sha1-Hulud              # Summary + packages for specific threat
-threat-db info --file threats/custom.csv        # Summary + packages for specific file
-threat-db info --summary                        # Summary only (metadata + stats)
-threat-db info --packages                       # Packages only (formatted display)
+ptat db info                                    # Summary + packages (all threats, default)
+ptat db info --threat sha1-Hulud                # Summary + packages for specific threat
+ptat db info --file threats/custom.csv          # Summary + packages for specific file
+ptat db info --summary                          # Summary only (metadata + stats)
+ptat db info --packages                         # Packages only (formatted display)
 ```
 
 **Export threat database as CSV:**
 ```bash
-threat-db info --csv > threats.csv              # Both metadata (# comments) + CSV data
-threat-db info --packages --csv                 # CSV data only (no metadata)
-threat-db info --summary --csv                  # Metadata only (as # comments)
-threat-db info --threat sha1-Hulud --packages --csv > hulud.csv  # Specific threat
+ptat db info --csv > threats.csv                # Both metadata (# comments) + CSV data
+ptat db info --packages --csv                   # CSV data only (no metadata)
+ptat db info --summary --csv                    # Metadata only (as # comments)
+ptat db info --threat sha1-Hulud --packages --csv > hulud.csv  # Specific threat
 ```
 
 **Validate threat CSV files:**
 ```bash
-threat-db validate --file /path/to/threats.csv  # Validate threat database format
-threat-db validate --file threats.csv --strict  # Strict mode: fail on unknown ecosystems
-threat-db validate --file threats.csv --verbose # Show all warnings and details
+ptat db validate --file /path/to/threats.csv    # Validate threat database format
+ptat db validate --file threats.csv --strict    # Strict mode: fail on unknown ecosystems
+ptat db validate --file threats.csv --verbose   # Show all warnings and details
 ```
 
 ### Docker Usage
@@ -211,27 +211,27 @@ docker build -t package-scan .
 docker run --rm -v "$(pwd):/workspace" package-scan
 
 # Scan for specific threat
-docker run --rm -v "$(pwd):/workspace" package-scan --threat sha1-Hulud
+docker run --rm -v "$(pwd):/workspace" package-scan scan --threat sha1-Hulud
 
 # Scan specific ecosystem
-docker run --rm -v "$(pwd):/workspace" package-scan --ecosystem maven
+docker run --rm -v "$(pwd):/workspace" package-scan scan --ecosystem maven
 
 # Use full host paths in output (instead of ./package.json)
-docker run --rm -v "$(pwd):/workspace" -e SCAN_PATH_PREFIX="$(pwd)" package-scan --threat sha1-Hulud
+docker run --rm -v "$(pwd):/workspace" -e SCAN_PATH_PREFIX="$(pwd)" package-scan scan --threat sha1-Hulud
 # Output will show: /home/user/project/package.json
 
 # Show Docker paths instead of relative
-docker run --rm -v "$(pwd):/workspace" -e SCAN_PATH_PREFIX="/workspace" package-scan
+docker run --rm -v "$(pwd):/workspace" -e SCAN_PATH_PREFIX="/workspace" package-scan scan
 # Output will show: /workspace/package.json
 
 # Disable path conversion (show absolute paths as-is)
-docker run --rm -v "$(pwd):/workspace" -e SCAN_PATH_PREFIX="" package-scan
+docker run --rm -v "$(pwd):/workspace" -e SCAN_PATH_PREFIX="" package-scan scan
 
 # Use custom threat CSV
 docker run --rm \
   -v "$(pwd):/workspace" \
   -v "$(pwd)/custom-threat.csv:/app/custom.csv" \
-  package-scan --csv /app/custom.csv
+  package-scan scan --csv /app/custom.csv
 
 # Get help
 docker run --rm package-scan --help
@@ -284,7 +284,7 @@ src/package_scan/
 - Detects duplicates and formatting issues
 - Provides detailed error reporting with line numbers
 - Supports strict mode (fail on unknown ecosystems) and verbose mode
-- CLI command: `threat-db validate --file threats.csv [--strict] [--verbose]`
+- CLI command: `ptat db validate --file threats.csv [--strict] [--verbose]`
 - Methods: `validate_file()`, `print_result()`, convenience function `validate_threat_file()`
 
 **ReportEngine** (`core/report_engine.py`):
@@ -419,7 +419,7 @@ pip,requests,2.8.1
 
 **View metadata:**
 ```bash
-threat-db info --file threats/sha1-Hulud.csv
+ptat db info --file threats/sha1-Hulud.csv
 ```
 
 ### Package Naming Conventions
@@ -500,7 +500,7 @@ Structured report with ecosystem sections and threat tracking:
 **Image Details:**
 - Base: `python:3.11-slim` (~150MB final size)
 - User: Non-root `scanner:scanner`
-- Entrypoint: `package-scan` CLI
+- Entrypoint: `ptat` CLI (defaults to `scan` subcommand)
 - Working directory: `/workspace`
 - Threat databases: Baked into `/app/threats/` directory
 
@@ -533,7 +533,7 @@ docker run --rm -v "$(pwd):/workspace" package-scan --no-save > /dev/null
 
 Scan for specific threat:
 ```bash
-docker run --rm -v "$(pwd):/workspace" package-scan --threat sha1-Hulud
+docker run --rm -v "$(pwd):/workspace" package-scan scan --threat sha1-Hulud
 # Only scans for sha1-Hulud worm packages
 ```
 
@@ -542,7 +542,7 @@ Custom threat database:
 docker run --rm \
   -v "$(pwd):/workspace" \
   -v "$(pwd)/custom-threats.csv:/app/custom.csv" \
-  package-scan --csv /app/custom.csv
+  package-scan scan --csv /app/custom.csv
 ```
 
 ## Test Fixtures
@@ -556,7 +556,7 @@ The repository includes test fixtures for all supported ecosystems:
 
 Run tests:
 ```bash
-package-scan --dir examples --no-save
+ptat scan --dir examples --no-save
 # Should detect 31 total findings across all ecosystems
 ```
 
@@ -749,10 +749,10 @@ echo "npm,malicious-package,1.0.0" >> my-attack.csv
 echo "maven,com.evil:library,2.0.0" >> my-attack.csv
 
 # 3. Scan your infrastructure
-package-scan --csv my-attack.csv --dir /path/to/repos
+ptat scan --csv my-attack.csv --dir /path/to/repos
 
 # 4. Generate report for security team
-package-scan --csv my-attack.csv --output incident-report.json
+ptat scan --csv my-attack.csv --output incident-report.json
 ```
 
 ### CI/CD: Continuous Scanning During Attack
@@ -780,14 +780,14 @@ jobs:
 
 ```bash
 # Scan entire monorepo
-package-scan --dir /path/to/monorepo
+ptat scan --dir /path/to/monorepo
 
 # Scan specific service
-package-scan --dir /path/to/monorepo/services/api --ecosystem npm
+ptat scan --dir /path/to/monorepo/services/api --ecosystem npm
 
 # Generate per-service reports
 for service in services/*/; do
-  package-scan --dir "$service" --output "${service//\//-}report.json"
+  ptat scan --dir "$service" --output "${service//\//-}report.json"
 done
 ```
 
@@ -795,22 +795,22 @@ done
 
 ```bash
 # View threat database (default shows summary + packages)
-threat-db info --threat sha1-Hulud              # Review specific threat details
+ptat db info --threat sha1-Hulud                # Review specific threat details
 
 # Export threat database for sharing (with metadata as # comments)
-threat-db info --csv > team-threat-db.csv
-threat-db info --threat sha1-Hulud --csv > hulud-complete.csv
+ptat db info --csv > team-threat-db.csv
+ptat db info --threat sha1-Hulud --csv > hulud-complete.csv
 
 # Export just the CSV data (no metadata comments)
-threat-db info --packages --csv > team-data.csv
-threat-db info --threat sha1-Hulud --packages --csv > hulud-data.csv
+ptat db info --packages --csv > team-data.csv
+ptat db info --threat sha1-Hulud --packages --csv > hulud-data.csv
 
 # Team members use shared database
-package-scan --csv team-threat-db.csv --dir ~/projects
+ptat scan --csv team-threat-db.csv --dir ~/projects
 
 # Combine multiple threat sources
 cat vendor-threat.csv internal-threat.csv > combined-threats.csv
-package-scan --csv combined-threats.csv
+ptat scan --csv combined-threats.csv
 ```
 
 ## Integration with Other Tools
@@ -850,7 +850,7 @@ print(json.dumps(sarif, indent=2))
 
 Usage:
 ```bash
-package-scan --output scan.json
+ptat scan --output scan.json
 python json-to-sarif.py scan.json > results.sarif
 ```
 
@@ -858,7 +858,7 @@ python json-to-sarif.py scan.json > results.sarif
 
 ```bash
 # Generate notification message
-FINDINGS=$(package-scan --no-save | grep "Total findings:")
+FINDINGS=$(ptat scan --no-save | grep "Total findings:")
 THREAT_COUNT=$(echo "$FINDINGS" | awk '{print $3}')
 
 if [ "$THREAT_COUNT" -gt 0 ]; then

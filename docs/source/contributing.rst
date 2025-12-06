@@ -134,7 +134,7 @@ To add a new threat database:
 
 3. **Test Loading**::
 
-    package-scan --threat my-threat --list-affected-packages
+    ptat scan --threat my-threat
 
 4. **Document Threat**
 
@@ -230,7 +230,7 @@ Bug Reports
 
 When reporting bugs, please include:
 
-* Package-scan version (``package-scan --version``)
+* Package-scan version (``ptat --version``)
 * Python version (``python --version``)
 * Operating system
 * Steps to reproduce

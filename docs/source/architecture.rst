@@ -234,7 +234,7 @@ Data Flow
 
 1. **CLI Parsing**
 
-   * User runs ``package-scan --dir /path --threat sha1-Hulud``
+   * User runs ``ptat scan --dir /path --threat sha1-Hulud``
    * CLI parses arguments and options
 
 2. **Threat Loading**
