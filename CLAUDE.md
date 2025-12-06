@@ -174,10 +174,19 @@ package-scan --ecosystem npm,maven,pip          # Multiple ecosystems
 package-scan --list-ecosystems
 ```
 
+**View threat database information:**
+```bash
+threat-db info                                  # Summary of all threats (metadata + stats)
+threat-db info --threat sha1-Hulud              # Summary of specific threat
+threat-db info --file threats/custom.csv        # Summary of specific file
+```
+
 **List compromised packages in database:**
 ```bash
-package-scan --list-affected-packages           # Formatted display
-package-scan --list-affected-packages-csv       # Raw CSV output
+threat-db info --packages                       # Formatted display (all threats)
+threat-db info --threat sha1-Hulud --packages   # Specific threat packages
+threat-db info --packages --csv                 # Raw CSV output
+threat-db info --threat sha1-Hulud --packages --csv > hulud.csv  # Export specific threat
 ```
 
 **Validate threat CSV files:**
@@ -783,8 +792,12 @@ done
 ### Security Team: Share Threat Intelligence
 
 ```bash
+# View threat database summary
+threat-db info --threat sha1-Hulud              # Review specific threat details
+
 # Export threat database for sharing
-package-scan --list-affected-packages-csv > team-threat-db.csv
+threat-db info --packages --csv > team-threat-db.csv
+threat-db info --threat sha1-Hulud --packages --csv > hulud-threat.csv
 
 # Team members use shared database
 package-scan --csv team-threat-db.csv --dir ~/projects

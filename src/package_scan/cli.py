@@ -157,16 +157,6 @@ def filter_available_ecosystems(requested: List[str]) -> List[str]:
     is_flag=True,
     help="List supported ecosystems and exit"
 )
-@click.option(
-    "--list-affected-packages",
-    is_flag=True,
-    help="Display compromised packages from threat database and exit"
-)
-@click.option(
-    "--list-affected-packages-csv",
-    is_flag=True,
-    help="Output threat database as raw CSV to stdout and exit"
-)
 def cli(
     scan_dir: str,
     threat_names: tuple,
@@ -174,9 +164,7 @@ def cli(
     ecosystems: Optional[str],
     output_file: str,
     no_save: bool,
-    list_ecosystems: bool,
-    list_affected_packages: bool,
-    list_affected_packages_csv: bool
+    list_ecosystems: bool
 ):
     """Multi-ecosystem package threat scanner CLI"""
 
@@ -207,57 +195,6 @@ def cli(
 
     # Resolve threats directory
     threats_dir = resolve_threats_dir()
-
-    # Load threat database early if --list-affected-packages* flags are used
-    # This ensures --threat arguments are respected
-    if list_affected_packages or list_affected_packages_csv:
-        # Load threat database with respect to --threat arguments
-        threat_db = ThreatDatabase(threats_dir=str(threats_dir))
-        threat_list = list(threat_names) if threat_names else None
-
-        if not threat_db.load_threats(threat_names=threat_list, csv_file=csv_file):
-            sys.exit(1)
-
-        # Handle --list-affected-packages-csv (raw CSV dump)
-        if list_affected_packages_csv:
-            # Output in CSV format
-            click.echo("ecosystem,name,version")
-            for ecosystem in sorted(threat_db.get_ecosystems()):
-                packages = threat_db.get_all_packages(ecosystem)
-                for pkg_name in sorted(packages.keys()):
-                    for version in sorted(packages[pkg_name]):
-                        click.echo(f"{ecosystem},{pkg_name},{version}")
-            sys.exit(0)
-
-        # Handle --list-affected-packages (formatted display)
-        if list_affected_packages:
-
-            click.echo("\n" + click.style("=" * 80, fg='yellow', bold=True))
-            click.echo(click.style("⚠️  COMPROMISED PACKAGES IN THREAT DATABASE", fg='yellow', bold=True))
-            click.echo(click.style("=" * 80, fg='yellow', bold=True))
-
-            # Show which threats are included
-            if threat_db.get_loaded_threats():
-                threat_list_str = ', '.join(threat_db.get_loaded_threats())
-                click.echo(click.style(f"\n🔎 Threats: {threat_list_str}", fg='cyan', bold=True))
-
-            all_ecosystems = threat_db.get_ecosystems()
-
-            for ecosystem in sorted(all_ecosystems):
-                packages = threat_db.get_all_packages(ecosystem)
-
-                click.echo(f"\n{click.style(f'📦 {ecosystem.upper()}:', fg='magenta', bold=True)}")
-                click.echo(f"   {len(packages)} unique packages, "
-                          f"{threat_db.get_version_count(ecosystem)} versions\n")
-
-                for pkg_name in sorted(packages.keys()):
-                    versions = sorted(packages[pkg_name])
-                    click.echo(f"  {click.style(pkg_name, fg='red', bold=True)}")
-                    for ver in versions:
-                        click.echo(f"    └─ {ver}")
-
-            click.echo(f"\n" + click.style("=" * 80, fg='yellow', bold=True))
-            sys.exit(0)
 
     # Print banner
     click.echo(click.style("=" * 80, fg='cyan', bold=True))
@@ -400,36 +337,188 @@ def threat_db_cli():
     pass
 
 
-@threat_db_cli.command(name="info", help="Display metadata from threat CSV file")
+@threat_db_cli.command(name="info", help="Display threat database information")
 @click.option(
     "--file",
     "file_path",
     type=click.Path(exists=True, file_okay=True, dir_okay=False, path_type=str),
-    required=True,
-    help="Path to threat CSV file"
+    help="Path to specific threat CSV file"
 )
-def info_threat_db(file_path: str):
+@click.option(
+    "--threat",
+    "threat_names",
+    multiple=True,
+    help="Filter for specific threat(s) by name"
+)
+@click.option(
+    "--summary",
+    is_flag=True,
+    help="Show metadata and statistics (default)"
+)
+@click.option(
+    "--packages",
+    is_flag=True,
+    help="List all affected packages"
+)
+@click.option(
+    "--csv",
+    "csv_output",
+    is_flag=True,
+    help="Output in CSV format"
+)
+def info_threat_db(file_path: str, threat_names: tuple, summary: bool, packages: bool, csv_output: bool):
     """
-    Display metadata from threat CSV file
+    Display threat database information
 
-    Shows metadata fields from comment lines at the start of the file.
-    Format: # Field: Value
-
-    Recommended fields:
-    - Description: Brief description of the threat
-    - Source: URL or reference to threat intelligence source
-    - Last updated: ISO 8601 timestamp
+    By default, shows metadata and statistics for threats.
+    Can filter by specific threat or file, and output in different formats.
 
     Examples:
         threat-db info --file threats/CVE-2025-55182.csv
-        threat-db info --file threats/sha1-Hulud.csv
+        threat-db info --threat sha1-Hulud
+        threat-db info --threat sha1-Hulud --packages
+        threat-db info --packages --csv
+        threat-db info --threat sha1-Hulud --summary --csv
     """
-    from package_scan.core import parse_threat_metadata
+    from package_scan.core import parse_threat_metadata, ThreatDatabase
     from pathlib import Path
 
-    metadata = parse_threat_metadata(Path(file_path))
-    metadata.compute_stats()
-    metadata.print_metadata()
+    # Determine default behavior: if no mode specified, default to summary
+    if not summary and not packages:
+        summary = True
+
+    # Handle file-based query (single file)
+    if file_path:
+        metadata = parse_threat_metadata(Path(file_path))
+        metadata.compute_stats()
+
+        if summary and not csv_output:
+            # Show formatted metadata + statistics
+            metadata.print_metadata()
+        elif summary and csv_output:
+            # Dump raw metadata as key: value
+            for key, value in metadata.metadata.items():
+                click.echo(f"{key}: {value}")
+        elif packages and csv_output:
+            # Dump CSV without comments
+            from package_scan.core.threat_metadata import get_csv_reader_without_comments
+            csv_content = get_csv_reader_without_comments(Path(file_path))
+            click.echo(csv_content.read())
+        elif packages and not csv_output:
+            # Show packages from this file
+            _print_packages_from_file(Path(file_path))
+        return
+
+    # Handle threat database query (all threats or filtered)
+    threats_dir = resolve_threats_dir()
+    threat_db = ThreatDatabase(threats_dir=str(threats_dir))
+    threat_list = list(threat_names) if threat_names else None
+
+    if not threat_db.load_threats(threat_names=threat_list):
+        sys.exit(1)
+
+    # Output based on mode and format
+    if packages and csv_output:
+        # Raw CSV dump
+        click.echo("ecosystem,name,version")
+        for ecosystem in sorted(threat_db.get_ecosystems()):
+            packages_dict = threat_db.get_all_packages(ecosystem)
+            for pkg_name in sorted(packages_dict.keys()):
+                for version in sorted(packages_dict[pkg_name]):
+                    click.echo(f"{ecosystem},{pkg_name},{version}")
+
+    elif packages and not csv_output:
+        # Formatted package list
+        _print_packages_formatted(threat_db)
+
+    elif summary and csv_output:
+        # Show metadata for each loaded threat in CSV-like format
+        for threat_name in threat_db.get_loaded_threats():
+            threat_file = threats_dir / f"{threat_name}.csv"
+            if threat_file.exists():
+                metadata = parse_threat_metadata(threat_file)
+                click.echo(f"# Threat: {threat_name}")
+                for key, value in metadata.metadata.items():
+                    click.echo(f"{key}: {value}")
+                click.echo()
+
+    elif summary and not csv_output:
+        # Show metadata + statistics for each loaded threat
+        for threat_name in threat_db.get_loaded_threats():
+            threat_file = threats_dir / f"{threat_name}.csv"
+            if threat_file.exists():
+                metadata = parse_threat_metadata(threat_file)
+                metadata.compute_stats()
+                metadata.print_metadata()
+                click.echo()
+
+
+def _print_packages_from_file(file_path: Path):
+    """Print packages from a single threat file in formatted style"""
+    import csv
+    from package_scan.core.threat_metadata import get_csv_reader_without_comments
+    from collections import defaultdict
+
+    ecosystems = defaultdict(lambda: defaultdict(set))
+
+    csv_content = get_csv_reader_without_comments(file_path)
+    reader = csv.DictReader(csv_content)
+
+    for row in reader:
+        ecosystem = row.get('ecosystem', '').strip().lower()
+        name = row.get('name', '').strip()
+        version = row.get('version', '').strip()
+        if ecosystem and name and version:
+            ecosystems[ecosystem][name].add(version)
+
+    click.echo("\n" + click.style("=" * 80, fg='yellow', bold=True))
+    click.echo(click.style("⚠️  COMPROMISED PACKAGES", fg='yellow', bold=True))
+    click.echo(click.style("=" * 80, fg='yellow', bold=True))
+    click.echo(click.style(f"\nFile: {file_path}", fg='cyan', bold=True))
+
+    for ecosystem in sorted(ecosystems.keys()):
+        packages = ecosystems[ecosystem]
+        total_versions = sum(len(versions) for versions in packages.values())
+
+        click.echo(f"\n{click.style(f'📦 {ecosystem.upper()}:', fg='magenta', bold=True)}")
+        click.echo(f"   {len(packages)} unique packages, {total_versions} versions\n")
+
+        for pkg_name in sorted(packages.keys()):
+            versions = sorted(packages[pkg_name])
+            click.echo(f"  {click.style(pkg_name, fg='red', bold=True)}")
+            for ver in versions:
+                click.echo(f"    └─ {ver}")
+
+    click.echo(f"\n" + click.style("=" * 80, fg='yellow', bold=True))
+
+
+def _print_packages_formatted(threat_db):
+    """Print packages from threat database in formatted style"""
+    click.echo("\n" + click.style("=" * 80, fg='yellow', bold=True))
+    click.echo(click.style("⚠️  COMPROMISED PACKAGES IN THREAT DATABASE", fg='yellow', bold=True))
+    click.echo(click.style("=" * 80, fg='yellow', bold=True))
+
+    # Show which threats are included
+    if threat_db.get_loaded_threats():
+        threat_list_str = ', '.join(threat_db.get_loaded_threats())
+        click.echo(click.style(f"\n🔎 Threats: {threat_list_str}", fg='cyan', bold=True))
+
+    all_ecosystems = threat_db.get_ecosystems()
+
+    for ecosystem in sorted(all_ecosystems):
+        packages = threat_db.get_all_packages(ecosystem)
+
+        click.echo(f"\n{click.style(f'📦 {ecosystem.upper()}:', fg='magenta', bold=True)}")
+        click.echo(f"   {len(packages)} unique packages, "
+                  f"{threat_db.get_version_count(ecosystem)} versions\n")
+
+        for pkg_name in sorted(packages.keys()):
+            versions = sorted(packages[pkg_name])
+            click.echo(f"  {click.style(pkg_name, fg='red', bold=True)}")
+            for ver in versions:
+                click.echo(f"    └─ {ver}")
+
+    click.echo(f"\n" + click.style("=" * 80, fg='yellow', bold=True))
 
 
 @threat_db_cli.command(name="validate", help="Validate threat CSV file format")
