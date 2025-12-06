@@ -42,9 +42,9 @@ Scan your project:
 
 .. code-block:: bash
 
-   package-scan                        # Scan current directory
-   package-scan --threat sha1-Hulud    # Scan for specific threat
-   package-scan --ecosystem npm        # Scan npm only
+   ptat scan                           # Scan current directory
+   ptat scan --threat sha1-Hulud       # Scan for specific threat
+   ptat scan --ecosystem npm           # Scan npm only
 
 Features
 --------

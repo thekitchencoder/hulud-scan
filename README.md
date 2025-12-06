@@ -48,10 +48,10 @@ docker pull kitchencoder/package-scan:latest
 docker run --rm -v "$(pwd):/workspace" kitchencoder/package-scan:latest
 
 # Scan for specific threat (e.g., sha1-Hulud worm)
-docker run --rm -v "$(pwd):/workspace" kitchencoder/package-scan:latest --threat sha1-Hulud
+docker run --rm -v "$(pwd):/workspace" kitchencoder/package-scan:latest scan --threat sha1-Hulud
 
 # Scan specific ecosystem only
-docker run --rm -v "$(pwd):/workspace" kitchencoder/package-scan:latest --ecosystem npm
+docker run --rm -v "$(pwd):/workspace" kitchencoder/package-scan:latest scan --ecosystem npm
 ```
 
 ### Using pip
@@ -61,16 +61,16 @@ docker run --rm -v "$(pwd):/workspace" kitchencoder/package-scan:latest --ecosys
 pip install -e .
 
 # Scan current directory
-package-scan
+ptat scan
 
 # Scan for specific threat
-package-scan --threat sha1-Hulud
+ptat scan --threat sha1-Hulud
 
 # Scan specific ecosystem
-package-scan --ecosystem maven
+ptat scan --ecosystem maven
 
 # Use custom threat CSV
-package-scan --csv /path/to/threat-list.csv
+ptat scan --csv /path/to/threat-list.csv
 ```
 
 ## Installation
@@ -111,8 +111,8 @@ docker build -t package-scan .
 
 3. Verify installation:
    ```bash
-   package-scan --help
-   package-scan --list-ecosystems
+   ptat --help
+   ptat scan --list-ecosystems
    ```
 
 ## Usage
@@ -121,58 +121,58 @@ docker build -t package-scan .
 
 ```bash
 # Scan current directory (all ecosystems, all threats)
-package-scan
+ptat scan
 
 # Scan specific directory
-package-scan --dir /path/to/project
+ptat scan --dir /path/to/project
 
 # Scan for specific threat
-package-scan --threat sha1-Hulud
+ptat scan --threat sha1-Hulud
 
 # Scan specific ecosystem
-package-scan --ecosystem npm
-package-scan --ecosystem maven,pip  # Multiple ecosystems
+ptat scan --ecosystem npm
+ptat scan --ecosystem maven,pip  # Multiple ecosystems
 ```
 
 ### Threat Management
 
 ```bash
 # List available ecosystems
-package-scan --list-ecosystems
+ptat scan --list-ecosystems
 
 # View threat database information
-threat-db info                                  # Summary + packages for all threats
-threat-db info --threat sha1-Hulud              # Summary + packages for specific threat
-threat-db info --summary                        # Summary only (metadata + statistics)
-threat-db info --packages                       # Packages only (formatted display)
+ptat db info                                  # Summary + packages for all threats
+ptat db info --threat sha1-Hulud              # Summary + packages for specific threat
+ptat db info --summary                        # Summary only (metadata + statistics)
+ptat db info --packages                       # Packages only (formatted display)
 
 # Export threat database as CSV
-threat-db info --csv > threats.csv              # Both metadata (as # comments) + CSV data
-threat-db info --packages --csv > data.csv      # CSV data only
-threat-db info --summary --csv > metadata.txt   # Metadata only (as # comments)
-threat-db info --threat sha1-Hulud --packages --csv > hulud.csv
+ptat db info --csv > threats.csv              # Both metadata (as # comments) + CSV data
+ptat db info --packages --csv > data.csv      # CSV data only
+ptat db info --summary --csv > metadata.txt   # Metadata only (as # comments)
+ptat db info --threat sha1-Hulud --packages --csv > hulud.csv
 
 # Use custom threat CSV
-package-scan --csv /path/to/custom-threats.csv
+ptat scan --csv /path/to/custom-threats.csv
 
 # Validate threat CSV before use
-threat-db validate --file /path/to/custom-threats.csv
+ptat db validate --file /path/to/custom-threats.csv
 
 # Validate with strict ecosystem checking
-threat-db validate --file threats.csv --strict
+ptat db validate --file threats.csv --strict
 
 # Validate with verbose output (shows all warnings)
-threat-db validate --file threats.csv --verbose
+ptat db validate --file threats.csv --verbose
 ```
 
 ### Output Options
 
 ```bash
 # Custom output file
-package-scan --output scan-results.json
+ptat scan --output scan-results.json
 
 # No JSON file (console only)
-package-scan --no-save
+ptat scan --no-save
 ```
 
 ### Docker Examples
@@ -182,24 +182,24 @@ package-scan --no-save
 docker run --rm \
   -v "$(pwd):/workspace" \
   -v "/path/to/custom.csv:/app/custom.csv" \
-  kitchencoder/package-scan:latest --csv /app/custom.csv
-  
+  kitchencoder/package-scan:latest scan --csv /app/custom.csv
+
 # Host file paths in the report
 docker run --rm \
   -v "$(pwd):/workspace" \
   -e  SCAN_PATH_PREFIX="$(pwd)" \
-  kitchencoder/package-scan:latest --csv /app/custom.csv
+  kitchencoder/package-scan:latest scan --csv /app/custom.csv
 
 # CI/CD: Exit with error if threats found
 docker run --rm -v "$(pwd):/workspace" kitchencoder/package-scan:latest --no-save || exit 1
 
 # Scan monorepo subdirectory
-docker run --rm -v "$(pwd):/workspace" kitchencoder/package-scan:latest --dir /workspace/services/api
+docker run --rm -v "$(pwd):/workspace" kitchencoder/package-scan:latest scan --dir /workspace/services/api
 ```
 
 ## CLI Options
 
-**package-scan** (main scanner):
+**ptat scan** (main scanner):
 - `--dir PATH`: Directory to scan (default: current directory)
 - `--threat NAME`: Scan for specific threat (can be repeated)
 - `--csv FILE`: Use custom threat CSV file
@@ -208,7 +208,7 @@ docker run --rm -v "$(pwd):/workspace" kitchencoder/package-scan:latest --dir /w
 - `--no-save`: Don't write JSON report
 - `--list-ecosystems`: List supported ecosystems and exit
 
-**threat-db info** (threat database queries):
+**ptat db info** (threat database queries):
 - `--file PATH`: Query specific threat CSV file
 - `--threat NAME`: Filter for specific threat(s)
 - `--summary`: Show only metadata and statistics
@@ -255,7 +255,7 @@ npm,react-server-dom-parcel,19.0
 Display metadata from a threat file:
 
 ```bash
-threat-db info --file threats/CVE-2025-55182.csv
+ptat db info --file threats/CVE-2025-55182.csv
 ```
 
 Example output:
@@ -273,7 +273,7 @@ Last updated: 2025-12-06 00:51:00 UTC
 Before using a custom threat CSV file, you can validate it to ensure proper formatting:
 
 ```bash
-threat-db validate --file my-threats.csv
+ptat db validate --file my-threats.csv
 ```
 
 The validator checks for:
@@ -417,7 +417,7 @@ Add scanning to your CI pipeline:
 - name: Scan for supply chain threats
   run: |
     docker run --rm -v "$PWD:/workspace" \
-      kitchencoder/package-scan:latest \
+      kitchencoder/package-scan:latest scan \
       --threat sha1-Hulud \
       --no-save || exit 1
 ```
@@ -442,7 +442,7 @@ When a new attack is discovered:
    ```
 3. **Test scanning**:
    ```bash
-   package-scan --csv my-threat.csv --list-affected-packages
+   ptat scan --csv my-threat.csv
    ```
 4. **Share with team** via git, shared drive, or internal repository
 

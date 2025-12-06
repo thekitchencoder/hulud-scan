@@ -38,7 +38,8 @@ WORKDIR /workspace
 # Override with -e SCAN_PATH_PREFIX="$(pwd)" to get full host paths
 ENV SCAN_PATH_PREFIX="."
 
-# Set entrypoint to the multi-ecosystem scanner CLI
-ENTRYPOINT ["package-scan"]
+# Set entrypoint to the PTAT CLI
+ENTRYPOINT ["ptat"]
 
-CMD []
+# Default to scan command for backward compatibility
+CMD ["scan"]

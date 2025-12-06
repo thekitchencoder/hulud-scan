@@ -28,8 +28,8 @@ python = ["packaging>=21.0", "toml>=0.10"]
 all = ["pyyaml>=6.0", "lxml>=4.9", "packaging>=21.0", "toml>=0.10"]
 
 [project.scripts]
-package-scan = "package_scan.cli:cli"
-threat-db = "package_scan.cli:threat_db_cli"
+ptat = "package_scan.cli:ptat"
+package-threat-analysis-tool = "package_scan.cli:ptat"
 
 [tool.setuptools]
 package-dir = {"" = "src"}

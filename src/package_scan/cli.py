@@ -4,9 +4,9 @@ Multi-Ecosystem Package Threat Scanner
 Scans for compromised packages across npm, Maven/Gradle, pip, and gem ecosystems
 
 CLI usage:
-    package-scan --dir /path/to/project --csv /path/to/threats.csv
-    package-scan --ecosystem npm,maven
-    threat-db validate --file /path/to/threats.csv
+    ptat scan --dir /path/to/project --csv /path/to/threats.csv
+    ptat scan --ecosystem npm,maven
+    ptat db validate --file /path/to/threats.csv
 """
 
 import os
@@ -109,7 +109,7 @@ def filter_available_ecosystems(requested: List[str]) -> List[str]:
     return filtered
 
 
-@click.command(name="package-scan", help="Multi-ecosystem package threat scanner")
+@click.command(name="scan", help="Scan projects for compromised packages")
 @click.option(
     "--dir",
     "scan_dir",
@@ -157,7 +157,7 @@ def filter_available_ecosystems(requested: List[str]) -> List[str]:
     is_flag=True,
     help="List supported ecosystems and exit"
 )
-def cli(
+def scan_command(
     scan_dir: str,
     threat_names: tuple,
     csv_file: Optional[str],
@@ -166,7 +166,7 @@ def cli(
     no_save: bool,
     list_ecosystems: bool
 ):
-    """Multi-ecosystem package threat scanner CLI"""
+    """Scan projects for compromised packages"""
 
     # Handle --list-ecosystems
     if list_ecosystems:
@@ -331,13 +331,13 @@ def cli(
         sys.exit(0)
 
 
-@click.group(name="threat-db", help="Threat database management commands")
-def threat_db_cli():
+@click.group(name="db", help="Threat database management commands")
+def db_command():
     """Threat database management command group"""
     pass
 
 
-@threat_db_cli.command(name="info", help="Display threat database information")
+@db_command.command(name="info", help="Display threat database information")
 @click.option(
     "--file",
     "file_path",
@@ -374,13 +374,13 @@ def info_threat_db(file_path: str, threat_names: tuple, summary: bool, packages:
     Can filter by specific threat or file, and output in different formats.
 
     Examples:
-        threat-db info                                  # Show summary + packages for all threats
-        threat-db info --file threats/CVE-2025-55182.csv # Show summary + packages for file
-        threat-db info --threat sha1-Hulud              # Show summary + packages for threat
-        threat-db info --summary                        # Show only summary
-        threat-db info --packages                       # Show only packages
-        threat-db info --packages --csv                 # Export packages as CSV
-        threat-db info --csv                            # Export both (metadata as # comments)
+        ptat db info                                  # Show summary + packages for all threats
+        ptat db info --file threats/CVE-2025-55182.csv # Show summary + packages for file
+        ptat db info --threat sha1-Hulud              # Show summary + packages for threat
+        ptat db info --summary                        # Show only summary
+        ptat db info --packages                       # Show only packages
+        ptat db info --packages --csv                 # Export packages as CSV
+        ptat db info --csv                            # Export both (metadata as # comments)
     """
     from package_scan.core import parse_threat_metadata, ThreatDatabase
     from pathlib import Path
@@ -536,7 +536,7 @@ def _print_packages_formatted(threat_db):
     click.echo(f"\n" + click.style("=" * 80, fg='yellow', bold=True))
 
 
-@threat_db_cli.command(name="validate", help="Validate threat CSV file format")
+@db_command.command(name="validate", help="Validate threat CSV file format")
 @click.option(
     "--file",
     "file_path",
@@ -566,9 +566,9 @@ def validate_threat_db(file_path: str, strict: bool, verbose: bool):
     - Package name format (ecosystem-specific)
 
     Examples:
-        package-scan threat-db validate --file threats/sha1-Hulud.csv
-        package-scan threat-db validate --file custom-threats.csv --strict
-        package-scan threat-db validate --file threats.csv --verbose
+        ptat db validate --file threats/sha1-Hulud.csv
+        ptat db validate --file custom-threats.csv --strict
+        ptat db validate --file threats.csv --verbose
     """
     from package_scan.core import validate_threat_file
 
@@ -576,5 +576,17 @@ def validate_threat_db(file_path: str, strict: bool, verbose: bool):
     sys.exit(0 if success else 1)
 
 
+@click.group(help="Package Threat Analysis Tool (PTAT) - Multi-ecosystem package threat scanner")
+@click.version_option()
+def ptat():
+    """Package Threat Analysis Tool (PTAT) - Multi-ecosystem package threat scanner"""
+    pass
+
+
+# Add subcommands to main group
+ptat.add_command(scan_command)
+ptat.add_command(db_command)
+
+
 if __name__ == "__main__":
-    cli()
+    ptat()

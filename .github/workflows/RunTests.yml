@@ -65,11 +65,15 @@ jobs:
         run: |
           docker run --rm package-scan:test --help
 
+      - name: Test Docker image - Scan help command
+        run: |
+          docker run --rm package-scan:test scan --help
+
       - name: Test Docker image - List ecosystems
         run: |
-          docker run --rm package-scan:test --list-ecosystems
+          docker run --rm package-scan:test scan --list-ecosystems
 
-      - name: Test Docker image - Scan examples directory
+      - name: Test Docker image - Scan examples directory (default scan command)
         run: |
           # Expect exit code 1 (threats found) since examples contain vulnerable packages
           docker run --rm -v "$PWD/examples:/workspace" package-scan:test --dir /workspace --no-save || [ $? -eq 1 ]
@@ -77,12 +81,20 @@ jobs:
       - name: Test Docker image - Scan for specific threat
         run: |
           # Expect exit code 1 (threats found) since examples contain sample threats
-          docker run --rm -v "$PWD/examples:/workspace" package-scan:test --dir /workspace --threat sample-threats --no-save || [ $? -eq 1 ]
+          docker run --rm -v "$PWD/examples:/workspace" package-scan:test scan --dir /workspace --threat sample-threats --no-save || [ $? -eq 1 ]
 
       - name: Test Docker image - Scan specific ecosystem
         run: |
           # Expect exit code 1 (threats found) since examples contain vulnerable npm packages
-          docker run --rm -v "$PWD/examples:/workspace" package-scan:test --dir /workspace --ecosystem npm --no-save || [ $? -eq 1 ]
+          docker run --rm -v "$PWD/examples:/workspace" package-scan:test scan --dir /workspace --ecosystem npm --no-save || [ $? -eq 1 ]
+
+      - name: Test Docker image - DB info command
+        run: |
+          docker run --rm --entrypoint ptat package-scan:test db info --threat sample-threats
+
+      - name: Test Docker image - DB validate command
+        run: |
+          docker run --rm --entrypoint ptat package-scan:test db validate --file /app/threats/sample-threats.csv
 
       - name: Verify Docker image security (non-root user)
         run: |

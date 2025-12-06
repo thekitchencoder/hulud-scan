@@ -9,14 +9,14 @@ Scan Current Directory
 
 Scan the current directory for all threats::
 
-    package-scan
+    ptat scan
 
 Scan Specific Directory
 ~~~~~~~~~~~~~~~~~~~~~~~
 
 ::
 
-    package-scan --dir /path/to/project
+    ptat scan --dir /path/to/project
 
 Threat Selection
 ----------------
@@ -26,21 +26,21 @@ Scan for Specific Threat
 
 ::
 
-    package-scan --threat sha1-Hulud
+    ptat scan --threat sha1-Hulud
 
 Scan for Multiple Threats
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 ::
 
-    package-scan --threat sha1-Hulud --threat custom-threat
+    ptat scan --threat sha1-Hulud --threat custom-threat
 
 Use Custom CSV File
 ~~~~~~~~~~~~~~~~~~~
 
 ::
 
-    package-scan --csv /path/to/custom-threats.csv
+    ptat scan --csv /path/to/custom-threats.csv
 
 Ecosystem Selection
 -------------------
@@ -50,23 +50,23 @@ Scan Specific Ecosystem
 
 ::
 
-    package-scan --ecosystem npm        # npm only
-    package-scan --ecosystem maven      # Maven/Gradle only
-    package-scan --ecosystem pip        # Python only
+    ptat scan --ecosystem npm        # npm only
+    ptat scan --ecosystem maven      # Maven/Gradle only
+    ptat scan --ecosystem pip        # Python only
 
 Scan Multiple Ecosystems
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 ::
 
-    package-scan --ecosystem npm,maven,pip
+    ptat scan --ecosystem npm,maven,pip
 
 List Available Ecosystems
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 ::
 
-    package-scan --list-ecosystems
+    ptat scan --list-ecosystems
 
 Output Options
 --------------
@@ -76,43 +76,46 @@ Custom Output File
 
 ::
 
-    package-scan --output my_report.json
+    ptat scan --output my_report.json
 
 Disable JSON Report
 ~~~~~~~~~~~~~~~~~~~
 
 ::
 
-    package-scan --no-save
+    ptat scan --no-save
 
 
-Listing Compromised Packages
------------------------------
+Threat Database Management
+---------------------------
 
-Display Compromised Packages
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+View Threat Database
+~~~~~~~~~~~~~~~~~~~~
 
-::
+Display metadata and affected packages::
 
-    package-scan --list-affected-packages
+    ptat db info                                    # Summary + packages (all threats)
+    ptat db info --threat sha1-Hulud                # Specific threat
+    ptat db info --summary                          # Summary only
+    ptat db info --packages                         # Packages only
 
-This displays all compromised packages in the threat database(s) in a formatted view.
-
-CSV Output of Database
+Export Threat Database
 ~~~~~~~~~~~~~~~~~~~~~~
 
-::
+Export to CSV format::
 
-    package-scan --list-affected-packages-csv
+    ptat db info --csv > threats.csv                # Full database
+    ptat db info --packages --csv                   # CSV data only
+    ptat db info --threat sha1-Hulud --packages --csv > hulud.csv  # Specific threat
 
-Outputs the raw CSV data from the threat database.
+Validate Threat CSV
+~~~~~~~~~~~~~~~~~~~
 
-Filter by Threat
-~~~~~~~~~~~~~~~~
+Validate threat database format::
 
-::
-
-    package-scan --list-affected-packages --threat sha1-Hulud
+    ptat db validate --file /path/to/threats.csv
+    ptat db validate --file threats.csv --strict    # Strict mode
+    ptat db validate --file threats.csv --verbose   # Verbose output
 
 Docker Usage
 ------------
@@ -129,7 +132,7 @@ Scan for Specific Threat
 
 ::
 
-    docker run --rm -v "$(pwd):/workspace" kitchencoder/package-scan:latest --threat sha1-Hulud
+    docker run --rm -v "$(pwd):/workspace" kitchencoder/package-scan:latest scan --threat sha1-Hulud
 
 Custom Threat Database
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -139,14 +142,14 @@ Custom Threat Database
     docker run --rm \
       -v "$(pwd):/workspace" \
       -v "$(pwd)/custom.csv:/app/custom.csv" \
-      kitchencoder/package-scan:latest --csv /app/custom.csv
+      kitchencoder/package-scan:latest scan --csv /app/custom.csv
 
 Save Report to Host
 ~~~~~~~~~~~~~~~~~~~
 
 ::
 
-    docker run --rm -v "$(pwd):/workspace" kitchencoder/package-scan:latest --output scan_results.json
+    docker run --rm -v "$(pwd):/workspace" kitchencoder/package-scan:latest scan --output scan_results.json
 
 The report will be saved to ``./scan_results.json`` on your host machine.
 
@@ -156,27 +159,6 @@ Exit Codes
 * **0**: No threats found
 * **1**: Threats found
 * **2**: Error occurred
-
-Legacy Commands
----------------
-
-npm-scan Command
-~~~~~~~~~~~~~~~~
-
-For backward compatibility, the ``npm-scan`` command is still available::
-
-    npm-scan --dir /path/to/project
-
-This is equivalent to::
-
-    package-scan --ecosystem npm --dir /path/to/project
-
-hulud-scan Alias
-~~~~~~~~~~~~~~~~
-
-The ``hulud-scan`` command is an alias for ``package-scan``::
-
-    hulud-scan --dir /path/to/project
 
 Common Use Cases
 ----------------
@@ -189,7 +171,7 @@ GitHub Actions example::
     - name: Scan for compromised packages
       run: |
         pip install package-scan
-        package-scan --no-save || exit 1
+        ptat scan --no-save || exit 1
 
 The ``--no-save`` flag skips writing the JSON report, and the command exits with code 1 if threats are found.
 
@@ -198,7 +180,7 @@ Scan Monorepo
 
 ::
 
-    package-scan --dir /path/to/monorepo
+    ptat scan --dir /path/to/monorepo
 
 The scanner will automatically detect and scan all sub-projects.
 
@@ -207,14 +189,14 @@ Audit Specific Dependency File
 
 ::
 
-    package-scan --dir /path/to/directory --ecosystem npm
+    ptat scan --dir /path/to/directory --ecosystem npm
 
 Generate Audit Report
 ~~~~~~~~~~~~~~~~~~~~~
 
 ::
 
-    package-scan --output audit-$(date +%Y%m%d).json
+    ptat scan --output audit-$(date +%Y%m%d).json
 
 Troubleshooting
 ---------------
@@ -224,11 +206,11 @@ No Findings When Expected
 
 1. Check that threat database includes the package::
 
-    package-scan --list-affected-packages | grep package-name
+    ptat db info --packages | grep package-name
 
 2. Verify ecosystem is being scanned::
 
-    package-scan --list-ecosystems
+    ptat scan --list-ecosystems
 
 3. Check version matching is correct
 
