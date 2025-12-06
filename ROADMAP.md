@@ -24,9 +24,10 @@ This tool prioritizes **speed, simplicity, and flexibility** over comprehensive 
 - ✅ **Version range matching**: Intelligent matching for npm semver (^, ~), Maven ranges ([,)), PEP 440 (>=, ~=)
 
 ### Threat Database System
-- ✅ **CSV-based threats**: Simple format for rapid threat list creation
+- ✅ **CSV-based threats**: Simple `ecosystem,name,version` format for rapid threat list creation
 - ✅ **Multi-threat support**: Scan for specific threats or all threats
 - ✅ **Custom databases**: Load any CSV file with compromised packages
+- ✅ **Threat validation** (v0.5.0): `threat-db validate` command with strict mode and detailed error reporting
 
 ### Deployment & Integration
 - ✅ **Docker support**: Pre-built images for rapid deployment
@@ -48,15 +49,17 @@ This roadmap is organized by implementation phases, balancing complexity with va
 ### **Phase 1: Quick Wins (Low Complexity, High Value)**
 *Timeline: 1-2 weeks per task*
 
-#### **1.1 Threat Database Validation**
-**Value**: Prevents distribution of malformed threat CSVs  
-**Complexity**: Low  
+#### **1.1 Threat Database Validation** ✅ **COMPLETED (v0.5.0)**
+**Value**: Prevents distribution of malformed threat CSVs
+**Complexity**: Low
+**Status**: ✅ Completed December 2025
 **Tasks**:
-- [ ] Create `src/package_scan/core/threat_validator.py`
-- [ ] Implement CSV format validation (headers, data types)
-- [ ] Add `package-scan threat-db validate --file threats.csv` command
-- [ ] Add unit tests for validation logic
-- [ ] Update documentation with validation examples
+- [x] Create `src/package_scan/core/threat_validator.py`
+- [x] Implement CSV format validation (headers, data types)
+- [x] Add `threat-db validate --file threats.csv` command
+- [x] Add unit tests for validation logic (22 tests, all passing)
+- [x] Update documentation with validation examples
+- [x] **Bonus**: Removed all legacy format support for cleaner codebase
 
 #### **1.2 Parallel Scanning Implementation**
 **Value**: 2-3x faster scanning for multi-ecosystem projects  
